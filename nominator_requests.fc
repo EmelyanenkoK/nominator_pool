@@ -1,0 +1,121 @@
+() add_stake (slice s_addr, int msg_value, tuple storage, int query_id) {
+  (slice _1, 
+   int total_active, 
+   int _3, 
+   int reward_per_gram, 
+   int _5, 
+   cell nominators,
+   cell _7, cell _8, cell _9) = storage_untuple(storage);
+  (int wc, int addr_hash)  = parse_std_addr(s_addr);
+  (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
+  ;; distribute profit to nominator
+  if(paid_reward_per_gram != reward_per_gram) {
+    active = active + (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
+  }
+  int put_fee = 200000000; ;; 0.2 Gram
+  int stake = msg_value - put_fee;
+  active = active + stake;
+  throw_unless (393, active >= 0); ;; This check here to get error code, negative active will throw anyway during serialization
+  nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
+  total_active = total_active + stake;
+  save_data(_1, total_active, _3, reward_per_gram, _5, nominators, _7, _8, _9);
+  if(query_id > 0) {
+    return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
+  }
+}
+
+() lock_stake (slice s_addr, int msg_value, tuple storage, int query_id, int amount) {
+  throw_unless(395, msg_value >= 200000000); ;; Processing fee
+  (slice _1, 
+   int total_active, 
+   int total_locked, 
+   int reward_per_gram, 
+   int _5, 
+   cell nominators,
+   cell _7, cell _8, cell _9) = storage_untuple(storage);
+  (int wc, int addr_hash)  = parse_std_addr(s_addr);
+  (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
+  ;; distribute profit to nominator
+  if(paid_reward_per_gram != reward_per_gram) {
+    active = active + (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
+  }
+  if( amount == 0) {
+    amount = active;
+  }
+  active = active - amount;
+  total_active = total_active - amount;
+  locked = locked + amount;
+  total_locked = total_locked + amount;
+  throw_unless (396, (active >= 0) | (total_active >= 0)); ;; This check here to get error code, negative active will throw anyway during serialization
+  nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
+  save_data(_1, total_active, total_locked, reward_per_gram, _5, nominators, _7, _8, _9);
+  if(query_id > 0) {
+    return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 100000000, 1);
+  }
+}
+
+() withdraw_locked (slice s_addr, int msg_value, tuple storage, int query_id) {
+  throw_unless(395, msg_value >= 200000000); ;; Processing fee
+  (slice _1, int _2, 
+   int total_locked, 
+   int reward_per_gram, 
+   int _5, 
+   cell nominators,
+   cell _7, cell _8, cell _9) = storage_untuple(storage);
+  (int wc, int addr_hash)  = parse_std_addr(s_addr);
+  (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
+  ;; distribute profit to nominator
+  if(paid_reward_per_gram != reward_per_gram) {
+    active = active + (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
+  }
+  int amount = locked;
+  locked = 0;
+  total_locked = total_locked - amount;
+  throw_unless (396, total_locked >= 0); ;; This check here to get error code, negative active will throw anyway during serialization
+  nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
+  save_data(_1, _2, total_locked, reward_per_gram, _5, nominators, _7, _8, _9);
+  return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 0);
+}
+
+() process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
+  int op = 0xfeedc0de;
+  int query_id = 0;
+  if (in_msg.slice_empty?()) {
+    ;; Special regime of signalling with msg_value signalling
+    int processing_fee = 200000000;
+    if (msg_value == ( 0x0c0010ff + processing_fee) ) {
+      op = 0x0c0010ff;
+    }
+    if (msg_value == (0x006e7bac + processing_fee) ) {
+      op = 0x006e7bac;
+    }
+    if (msg_value == 0xdead10cc) {
+      op = 0xdead10cc;
+    }
+  } else {
+    int op = in_msg~load_uint(32);
+    int query_id = in_msg~load_uint(64);
+  }
+
+
+  if (op == 0xfeedc0de ) {
+    ;; put stake into pool
+    return add_stake(s_addr, msg_value, storage, query_id);
+  }
+  if (op == 0x0c0010ff ) {
+    ;; lock stake from being used for validation
+    int amount = 0; ;; 0 means lock all available
+    if (query_id) {
+      amount = in_msg~load_grams();
+    }
+    return lock_stake(s_addr, msg_value, storage, query_id, amount);
+  }
+  if (op == 0x006e7bac ) {
+    return withdraw_locked(s_addr, msg_value, storage, query_id);
+  }
+  if (op == 0xdead10cc) {
+    ;; validator's function allowed for nominators
+    throw_unless(112, msg_value > 1000000000);
+    return recover_stake(msg_value, query_id, storage, s_addr);
+  }
+}

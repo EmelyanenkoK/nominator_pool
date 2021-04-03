@@ -1,0 +1,3 @@
+(int) new_query_id () {
+    return random() >> (256 - 64);
+}

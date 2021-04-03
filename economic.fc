@@ -1,0 +1,40 @@
+(cell, (int)) ~collect_matured(cell transfers) {
+  (int validators_elected_for, int stake_held_for) = stake_lock_durations();
+  int matured = 0;
+  int threshold = validators_elected_for + stake_held_for;
+  do {
+    var (transfers', i, transfer, f) = transfers.udict_delete_get_min(32);
+    f~touch();
+    if (f) {
+      f = (i < threshold);
+    }
+    if (f) {
+      matured = matured + transfer~load_grams();
+      transfers = transfers';
+    }
+  } until (~ f);
+  return (transfers, (matured));
+}
+
+() update_reward_on_stake_return (slice _1, 
+                                  int total_active,
+                                  int _3, 
+                                  int reward_per_gram,
+                                  int validator_reward_share,
+                                  cell _6,
+                                  cell _7,
+                                  cell _8,
+                                  cell transfers,
+                                  int msg_value) impure {
+  if(msg_value > 0 ) {
+    int matured = transfers~collect_matured();
+    if (total_active > 0) {
+      int profit  = msg_value - matured;
+      if( profit > 0 ) {
+        profit = profit * validator_reward_share >> 16;
+      }
+      reward_per_gram = reward_per_gram + profit * 1000000000 / total_active;
+    }
+  }
+  save_data(_1, total_active, _3, reward_per_gram, validator_reward_share, _6, _7, _8, transfers);                                
+}

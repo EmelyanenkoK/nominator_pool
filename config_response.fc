@@ -1,0 +1,38 @@
+() process_config_response (int flags, slice in_msg) impure {
+  if( flags & 1) {
+    ;; Should we process bounced (that is errors) responses somehow?
+    return (); 
+  }
+  int incoming_op = in_msg~load_uint(32);
+  int query_id = in_msg~load_uint(64);
+  (slice _1, int total_active, int _3, int reward_per_gram, int _5, cell _6, cell requests, cell _8, cell transfers) = load_data();
+  (cell request_cell, int found) = requests~udict_delete_get_ref?(64, query_id);
+  throw_unless(201, found);
+  slice request = request_cell.begin_parse();
+  int stored_op = request~load_uint(32);
+  (int time, int response_query_id, slice s_addr) = (request~load_uint(32),request~load_uint(64),request~load_msg_addr());
+  int receipt_attachment = 10000000;
+
+  if ( stored_op == 0x566f7465) {
+    ;; 0xd6745240-1, 0xd6745240-2, 0xd6745240 + 2, 0xd6745240+6, 0xd6745240+5
+    ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/config-code.fc#L521
+    int base_op = 0xd6745240;
+    int is_known = (incoming_op == (base_op - 1)) |
+                   (incoming_op == (base_op - 2)) |
+                   (incoming_op == (base_op + 2)) |
+                   (incoming_op == (base_op + 5)) |
+                   (incoming_op == (base_op + 6));
+    int is_error = incoming_op < base_op;
+    if (is_known) {
+      if(is_error) {
+        return send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, base_op - incoming_op, receipt_attachment, 1);
+      } else {
+        return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, incoming_op - base_op, receipt_attachment, 1);
+      }
+    } else {
+      return send_receipt_message(s_addr, stored_op + 0x0000f000, response_query_id, incoming_op, receipt_attachment, 1);
+    }
+  }
+  
+  return ();
+}
