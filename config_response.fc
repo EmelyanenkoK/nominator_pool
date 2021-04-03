@@ -5,7 +5,7 @@
   }
   int incoming_op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
-  (slice _1, int total_active, int _3, int reward_per_gram, int _5, cell _6, cell requests, cell _8, cell transfers) = load_data();
+  (slice _1, int total_active, int _3, int reward_per_gram, int _5, cell _6, cell requests, cell transfers) = load_data();
   (cell request_cell, int found) = requests~udict_delete_get_ref?(64, query_id);
   throw_unless(201, found);
   slice request = request_cell.begin_parse();

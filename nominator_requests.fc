@@ -5,7 +5,7 @@
    int reward_per_gram, 
    int _5, 
    cell nominators,
-   cell _7, cell _8, cell _9) = storage_untuple(storage);
+   cell _7, cell _8) = storage_untuple(storage);
   (int wc, int addr_hash)  = parse_std_addr(s_addr);
   (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
   ;; distribute profit to nominator
@@ -18,7 +18,7 @@
   throw_unless (393, active >= 0); ;; This check here to get error code, negative active will throw anyway during serialization
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
   total_active = total_active + stake;
-  save_data(_1, total_active, _3, reward_per_gram, _5, nominators, _7, _8, _9);
+  save_data(_1, total_active, _3, reward_per_gram, _5, nominators, _7, _8);
   if(query_id > 0) {
     return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
   }
@@ -32,7 +32,7 @@
    int reward_per_gram, 
    int _5, 
    cell nominators,
-   cell _7, cell _8, cell _9) = storage_untuple(storage);
+   cell _7, cell _8) = storage_untuple(storage);
   (int wc, int addr_hash)  = parse_std_addr(s_addr);
   (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
   ;; distribute profit to nominator
@@ -48,7 +48,7 @@
   total_locked = total_locked + amount;
   throw_unless (396, (active >= 0) | (total_active >= 0)); ;; This check here to get error code, negative active will throw anyway during serialization
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
-  save_data(_1, total_active, total_locked, reward_per_gram, _5, nominators, _7, _8, _9);
+  save_data(_1, total_active, total_locked, reward_per_gram, _5, nominators, _7, _8);
   if(query_id > 0) {
     return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 100000000, 1);
   }
@@ -61,7 +61,7 @@
    int reward_per_gram, 
    int _5, 
    cell nominators,
-   cell _7, cell _8, cell _9) = storage_untuple(storage);
+   cell _7, cell _8) = storage_untuple(storage);
   (int wc, int addr_hash)  = parse_std_addr(s_addr);
   (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
   ;; distribute profit to nominator
@@ -73,7 +73,7 @@
   total_locked = total_locked - amount;
   throw_unless (396, total_locked >= 0); ;; This check here to get error code, negative active will throw anyway during serialization
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
-  save_data(_1, _2, total_locked, reward_per_gram, _5, nominators, _7, _8, _9);
+  save_data(_1, _2, total_locked, reward_per_gram, _5, nominators, _7, _8);
   return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 0);
 }
 

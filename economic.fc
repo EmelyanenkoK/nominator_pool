@@ -23,7 +23,6 @@
                                   int validator_reward_share,
                                   cell _6,
                                   cell _7,
-                                  cell _8,
                                   cell transfers,
                                   int msg_value) impure {
   if(msg_value > 0 ) {
@@ -36,5 +35,5 @@
       reward_per_gram = reward_per_gram + profit * 1000000000 / total_active;
     }
   }
-  save_data(_1, total_active, _3, reward_per_gram, validator_reward_share, _6, _7, _8, transfers);                                
+  save_data(_1, total_active, _3, reward_per_gram, validator_reward_share, _6, _7, transfers);                                
 }

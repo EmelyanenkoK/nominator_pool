@@ -22,10 +22,9 @@
 ;;           validator_reward_share:uint16
 ;;           nominators: Nominators
 ;;           requests: Requests;
-;;           elections: Elections;
 ;;           transfers: (HashmapE Timestamp Grams);
 
-(slice, int, int, int, int, cell, cell, cell, cell) load_data () {
+(slice, int, int, int, int, cell, cell, cell) load_data () {
   var ds = get_data().begin_parse();
   return (
           ds~load_msg_addr(),
@@ -33,7 +32,6 @@
           ds~load_grams(),
           ds~load_int(48),
           ds~load_uint(16),
-          ds~load_dict(),
           ds~load_dict(),
           ds~load_dict(),
           ds~load_dict()
@@ -48,7 +46,6 @@
               int validator_reward_share,
               cell nominators,
               cell requests,
-              cell elections,
               cell transfers) impure {
   var st = begin_cell().store_slice(validator)
                        .store_grams(total_active)
@@ -57,7 +54,6 @@
                        .store_uint(validator_reward_share, 16)
                        .store_dict(nominators)
                        .store_dict(requests)
-                       .store_dict(elections)
                        .store_dict(transfers)
             .end_cell();
   set_data(st);
