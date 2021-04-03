@@ -1,7 +1,8 @@
-(int, int, slice) get_pool_data() method_id {
+(int, int, int, int) get_pool_data() method_id {
   var (validator_address, total_active, total_locked,
-       _, _, _, _, _, _) = load_data();
-  return (total_active, total_locked, validator_address);
+       _, validator_reward_share, _, _, _, _) = load_data();
+  (int wc, int addr_hash) = validator_address.parse_std_addr();
+  return (total_active, total_locked, validator_reward_share, addr_hash);
 }
 
 (int, int) get_nominator(int workchain, int addr_hash) method_id {
