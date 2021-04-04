@@ -1,0 +1,70 @@
+"Asm.fif" include
+"TonUtil.fif" include
+"GetOpt.fif" include
+
+{ show-options-help 1 halt } : usage
+
+
+begin-options
+     "<validator-wallet-address> <validator-fee> [<pool-asm-file>] [<savefile>]" +cr +tab
+    +"Creates a query to deploy nominator pool authorized for validator requests from <validator-wallet-address>"  +cr +tab
+    +"<validator-fee> from 0 to 1 controls how much rewards validator retains for itself"  +cr +tab
+    +"code is assembled from <pool-asm-file> ('nominator-pool-code.fif' by default)"  +cr +tab
+    +"and saves it into <savefile>.boc ('new-pool-query.boc' by default)"
+    disable-digit-options generic-help-setopt
+  "h" "--help" { usage } short-long-option
+    "Shows a help message" option-help
+parse-options
+
+$# dup 2 < swap 4 > or ' usage if
+4 :$1..n
+
+$1 true parse-load-address drop 2=: dest_addr
+$2 (number) dup 0= abort"<validator-fee> must be a real number 0..1"
+1 = { 16 << } { 16 <</r } cond
+dup 0 < over 65536 > or abort"<validator-fee> must be a real number 0..1"
+=: validatorfee
+
+$3 "nominator-pool-code.fif" replace-if-null =: codefile
+$4 "new-pool-query" replace-if-null =: savefile
+
+now =: nonce
+<{
+  SETCP0 ACCEPT
+  nonce INT
+  codefile include PUSHREF SETCODE
+}>s =: contract_code
+
+<b dest_addr addr,
+   0 Gram,
+   0 Gram,
+   0 48 i,
+   validatorfee 16 u,
+   dictnew dict,
+   dictnew dict,
+   dictnew dict,
+b> =: contract_storage
+
+
+
+-1 =: wc
+
+<b b{00110} s, <b contract_code s, b> ref, contract_storage ref, b>
+dup =: state_init
+dup hashu wc swap 2constant contract_addr
+
+."Contract address = " contract_addr .addr cr
+
+contract_addr "nominator-pool.addr" save-address-verbose
+
+."Non-bounceable address (for init): " contract_addr 7 .Addr cr
+."Bounceable address (for later access): " contract_addr 6 .Addr cr
+
+
+<b b> <s =: init_message
+
+<b b{1000100} s, contract_addr addr, b{000010} s, state_init <s s, b{0} s, init_message s, b>
+2 boc+>B
+savefile +".boc" tuck B>file
+."(Saved nominator pool contract creating query to file " type .")" cr
+
