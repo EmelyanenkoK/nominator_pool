@@ -1,14 +1,3 @@
-
-() send_grams(slice addr, int grams, int mode) impure inline_ref {
-  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
-  var msg = begin_cell()
-    .store_uint(0x18, 6)
-    .store_slice(addr)
-    .store_grams(grams)
-    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
-  send_raw_message(msg.end_cell(), mode);
-}
-
 () send_message(slice addr, int grams, cell body, int mode) impure inline_ref {
   ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
   var msg = begin_cell()
