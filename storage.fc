@@ -19,17 +19,19 @@
 ;;           total_active:Grams 
 ;;           total_locked:Grams
 ;;           reward_per_gram:int48       ;; NB! not "Grams" since can be negative
+;;           undistributed_reward:int48
 ;;           validator_reward_share:uint16
 ;;           nominators: Nominators
 ;;           requests: Requests;
 ;;           transfers: (HashmapE Timestamp Grams);
 
-(slice, int, int, int, int, cell, cell, cell) load_data () inline {
+(slice, int, int, int, int, int, cell, cell, cell) load_data () inline {
   var ds = get_data().begin_parse();
   return (
           ds~load_msg_addr(),
           ds~load_grams(),
           ds~load_grams(),
+          ds~load_int(48),
           ds~load_int(48),
           ds~load_uint(16),
           ds~load_dict(),
@@ -43,6 +45,7 @@
               int total_active,
               int total_locked,
               int reward_per_gram,
+              int undistributed_reward,
               int validator_reward_share,
               cell nominators,
               cell requests,
@@ -51,6 +54,7 @@
                        .store_grams(total_active)
                        .store_grams(total_locked)
                        .store_int(reward_per_gram, 48)
+                       .store_int(undistributed_reward, 48)
                        .store_uint(validator_reward_share, 16)
                        .store_dict(nominators)
                        .store_dict(requests)

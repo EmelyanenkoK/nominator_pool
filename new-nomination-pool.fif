@@ -39,6 +39,7 @@ now =: nonce
    0 Gram,
    0 Gram,
    0 48 i,
+   0 48 i,
    validatorfee 16 u,
    dictnew dict,
    dictnew dict,
