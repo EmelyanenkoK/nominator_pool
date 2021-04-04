@@ -35,7 +35,7 @@ now =: nonce
   codefile include PUSHREF SETCODE
 }>s =: contract_code
 
-<b dest_addr addr,
+<b dest_addr Addr,
    0 Gram,
    0 Gram,
    0 48 i,
