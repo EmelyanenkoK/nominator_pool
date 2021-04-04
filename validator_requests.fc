@@ -154,6 +154,14 @@
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
 
+() validator_withdraw (slice in_msg, int msg_value, int query_id, tuple storage, slice s_addr) impure {
+  ensure_standart_fee(msg_value, 50000);
+  (slice _1, int total_active, int total_locked, int _4, int _5, cell _6, cell _7, cell _8) = storage_untuple(storage);
+  int amount = in_msg~load_grams();
+  int op = 0x006e7bac;
+  raw_reserve(total_active + total_locked, 0);
+  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, amount, 1);
+}
 
 () process_validator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
   int op = in_msg~load_uint(32);
@@ -173,5 +181,8 @@
   }
   if (op == 0x566f7465) {
     return vote_for_config(in_msg, msg_value, query_id, storage, s_addr);
+  }
+  if (op == 0x006e7bac) {
+    return validator_withdraw(in_msg, msg_value, query_id, storage, s_addr);
   }
 }
