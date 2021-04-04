@@ -1,11 +1,11 @@
-() ensure_standart_fee(int msg_value, int id) impure {
+() ensure_standart_fee(int msg_value, int id) inline {
   int elector_fee = 1000000000;
   int our_processing_fee = 50000000;
   int receipt_attachment = 10000000;
   throw_unless(312, msg_value >= 1000000000 + 50000000 + 2 * 10000000);
 }
 
-() send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) { 
+() send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
   ensure_standart_fee(msg_value, 10000);
   int amount = in_msg~load_grams();
   slice cs = in_msg;

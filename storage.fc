@@ -24,7 +24,7 @@
 ;;           requests: Requests;
 ;;           transfers: (HashmapE Timestamp Grams);
 
-(slice, int, int, int, int, cell, cell, cell) load_data () {
+(slice, int, int, int, int, cell, cell, cell) load_data () inline {
   var ds = get_data().begin_parse();
   return (
           ds~load_msg_addr(),
@@ -46,7 +46,7 @@
               int validator_reward_share,
               cell nominators,
               cell requests,
-              cell transfers) impure {
+              cell transfers) impure inline {
   var st = begin_cell().store_slice(validator)
                        .store_grams(total_active)
                        .store_grams(total_locked)

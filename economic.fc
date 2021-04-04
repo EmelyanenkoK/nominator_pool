@@ -1,4 +1,4 @@
-(cell, (int)) ~collect_matured(cell transfers) {
+(cell, (int)) ~collect_matured(cell transfers) inline {
   (int validators_elected_for, int stake_held_for) = stake_lock_durations();
   int matured = 0;
   int threshold = validators_elected_for + stake_held_for;

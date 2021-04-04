@@ -1,4 +1,4 @@
-() add_stake (slice s_addr, int msg_value, tuple storage, int query_id) {
+() add_stake (slice s_addr, int msg_value, tuple storage, int query_id) impure {
   (slice _1, 
    int total_active, 
    int _3, 
@@ -24,7 +24,7 @@
   }
 }
 
-() lock_stake (slice s_addr, int msg_value, tuple storage, int query_id, int amount) {
+() lock_stake (slice s_addr, int msg_value, tuple storage, int query_id, int amount) impure {
   throw_unless(395, msg_value >= 200000000); ;; Processing fee
   (slice _1, 
    int total_active, 
@@ -54,7 +54,7 @@
   }
 }
 
-() withdraw_locked (slice s_addr, int msg_value, tuple storage, int query_id) {
+() withdraw_locked (slice s_addr, int msg_value, tuple storage, int query_id) impure {
   throw_unless(395, msg_value >= 200000000); ;; Processing fee
   (slice _1, int _2, 
    int total_locked, 
