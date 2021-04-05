@@ -63,7 +63,7 @@
 }
 
 () withdraw_locked (slice s_addr, int msg_value, tuple storage, int query_id) impure {
-  throw_unless(395, msg_value >= 200000000); ;; Processing fee
+  throw_unless(397, msg_value >= 200000000); ;; Processing fee
   (slice _1,
    int total_active,
    int total_locked,
@@ -84,7 +84,7 @@
   int amount = locked;
   locked = 0;
   total_locked = total_locked - amount;
-  throw_unless (396, total_locked >= 0); ;; This check here to get error code, negative active will throw anyway during serialization
+  throw_unless (398, total_locked >= 0); ;; This check here to get error code, negative locked will throw anyway during serialization
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
   save_data(_1, total_active, total_locked, reward_per_gram, undistributed_reward, _6, nominators, _8, _9);
   return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 0);
