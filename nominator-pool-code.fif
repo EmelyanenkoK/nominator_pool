@@ -733,51 +733,69 @@ PROGRAM{
   }>
   process_validator_request PROC:<{
     //  in_msg msg_value storage s_addr
+    s3 PUSH	//  in_msg msg_value storage s_addr in_msg
+    SEMPTY	//  in_msg msg_value storage s_addr _4
+    IFJMP:<{	//  in_msg msg_value storage s_addr
+      4 BLKDROP	// 
+      FALSE	//  _5
+    }>	//  in_msg msg_value storage s_addr
     s0 s3 XCHG	//  s_addr msg_value storage in_msg
     32 LDU	//  s_addr msg_value storage op in_msg
+    OVER	//  s_addr msg_value storage op in_msg op
+    NOT	//  s_addr msg_value storage op in_msg _10
+    IFJMP:<{	//  s_addr msg_value storage op in_msg
+      5 BLKDROP	// 
+      FALSE	//  _11
+    }>	//  s_addr msg_value storage op in_msg
     64 LDU	//  s_addr msg_value storage op query_id in_msg
     s2 PUSH
-    1316189259 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _12=1316189259
-    EQUAL	//  s_addr msg_value storage op query_id in_msg _13
+    1316189259 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _16=1316189259
+    EQUAL	//  s_addr msg_value storage op query_id in_msg _17
     IFJMP:<{	//  s_addr msg_value storage op query_id in_msg
       s2 POP	//  s_addr msg_value storage in_msg query_id
       s0 s3 XCHG
       s4 s4 XCHG2	//  msg_value query_id storage s_addr in_msg
       send_new_stake CALLDICT
+      TRUE	//  _19
     }>	//  s_addr msg_value storage op query_id in_msg
     s2 PUSH
-    1197831204 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _15=1197831204
-    EQUAL	//  s_addr msg_value storage op query_id in_msg _16
+    1197831204 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _20=1197831204
+    EQUAL	//  s_addr msg_value storage op query_id in_msg _21
     IFJMP:<{	//  s_addr msg_value storage op query_id in_msg
       DROP
       NIP	//  s_addr msg_value storage query_id
       s0 s1 s3 XCHG3	//  msg_value query_id storage s_addr
       recover_stake CALLDICT
+      TRUE	//  _23
     }>	//  s_addr msg_value storage op query_id in_msg
     s2 PUSH
-    1450460016 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _18=1450460016
-    EQUAL	//  s_addr msg_value storage op query_id in_msg _19
+    1450460016 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _24=1450460016
+    EQUAL	//  s_addr msg_value storage op query_id in_msg _25
     IFJMP:<{	//  s_addr msg_value storage op query_id in_msg
       s2 POP	//  s_addr msg_value storage in_msg query_id
       s0 s0 s4 XCHG3	//  in_msg msg_value query_id storage s_addr
       check_and_vote_for_complaint CALLDICT
+      TRUE	//  _27
     }>	//  s_addr msg_value storage op query_id in_msg
     s2 PUSH
-    1450144869 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _21=1450144869
-    EQUAL	//  s_addr msg_value storage op query_id in_msg _22
+    1450144869 PUSHINT	//  s_addr msg_value storage op query_id in_msg op _28=1450144869
+    EQUAL	//  s_addr msg_value storage op query_id in_msg _29
     IFJMP:<{	//  s_addr msg_value storage op query_id in_msg
       s2 POP	//  s_addr msg_value storage in_msg query_id
       s0 s0 s4 XCHG3	//  in_msg msg_value query_id storage s_addr
       vote_for_config CALLDICT
+      TRUE	//  _31
     }>	//  s_addr msg_value storage op query_id in_msg
     s0 s2 XCHG
-    7240620 PUSHINT	//  s_addr msg_value storage in_msg query_id op _24=7240620
-    EQUAL	//  s_addr msg_value storage in_msg query_id _25
+    7240620 PUSHINT	//  s_addr msg_value storage in_msg query_id op _32=7240620
+    EQUAL	//  s_addr msg_value storage in_msg query_id _33
     IFJMP:<{	//  s_addr msg_value storage in_msg query_id
       s0 s0 s4 XCHG3	//  in_msg msg_value query_id storage s_addr
       validator_withdraw CALLDICT
+      TRUE	//  _35
     }>	//  s_addr msg_value storage in_msg query_id
     5 BLKDROP	// 
+    FALSE	//  _36
   }>
   add_stake PROC:<{
     //  s_addr msg_value storage query_id
@@ -975,70 +993,111 @@ PROGRAM{
   }>
   process_nominator_request PROC:<{
     //  in_msg msg_value storage s_addr
-    4276994270 PUSHINT	//  in_msg msg_value storage s_addr op=4276994270
-    0 PUSHINT	//  in_msg msg_value storage s_addr op=4276994270 query_id=0
-    s5 PUSH	//  in_msg msg_value storage s_addr op=4276994270 query_id=0 in_msg
-    SEMPTY	//  in_msg msg_value storage s_addr op=4276994270 query_id=0 _8
-    s6 POP	//  _8 msg_value storage s_addr op=4276994270 query_id=0
-    s0 s5 XCHG	//  query_id=0 msg_value storage s_addr op=4276994270 _8
-    IF:<{	//  query_id=0 msg_value storage s_addr op=4276994270
-      s3 PUSH
-      401330943 PUSHINT	//  query_id=0 msg_value storage s_addr op=4276994270 msg_value _12
-      EQUAL	//  query_id=0 msg_value storage s_addr op=4276994270 _13
-      IF:<{	//  query_id=0 msg_value storage s_addr op=4276994270
-        DROP	//  query_id=0 msg_value storage s_addr
-        201330943 PUSHINT	//  query_id=0 msg_value storage s_addr op=201330943
-      }>	//  query_id=0 msg_value storage s_addr op
-      s3 PUSH
-      207240620 PUSHINT	//  query_id=0 msg_value storage s_addr op msg_value _16
-      EQUAL	//  query_id=0 msg_value storage s_addr op _17
-      IF:<{	//  query_id=0 msg_value storage s_addr op
-        DROP	//  query_id=0 msg_value storage s_addr
-        7240620 PUSHINT	//  query_id=0 msg_value storage s_addr op=7240620
-      }>	//  query_id=0 msg_value storage s_addr op
-      s3 PUSH
-      3735883980 PUSHINT	//  query_id=0 msg_value storage s_addr op msg_value _19=3735883980
-      EQUAL	//  query_id=0 msg_value storage s_addr op _20
-      IF:<{	//  query_id=0 msg_value storage s_addr op
-        DROP	//  query_id=0 msg_value storage s_addr
-        3735883980 PUSHINT	//  query_id=0 msg_value storage s_addr op=3735883980
-      }>	//  query_id=0 msg_value storage s_addr op
-    }>ELSE<{	//  query_id=0 msg_value storage s_addr op=4276994270
+    0 PUSHINT	//  in_msg msg_value storage s_addr query_id=0
+    s0 s4 XCHG	//  query_id=0 msg_value storage s_addr in_msg
+    32 LDU	//  query_id=0 msg_value storage s_addr op in_msg
+    OVER	//  query_id=0 msg_value storage s_addr op in_msg op
+    NOT	//  query_id=0 msg_value storage s_addr op in_msg _10
+    IF:<{	//  query_id=0 msg_value storage s_addr op in_msg
+      8 LDU	//  query_id=0 msg_value storage s_addr op first_char in_msg
+      OVER	//  query_id=0 msg_value storage s_addr op first_char in_msg first_char
+      108 EQINT	//  query_id=0 msg_value storage s_addr op first_char in_msg _16
+      IF:<{	//  query_id=0 msg_value storage s_addr op first_char in_msg
+        1 2 BLKDROP2	//  query_id=0 msg_value storage s_addr first_char in_msg
+        24 LDU	//  query_id=0 msg_value storage s_addr first_char _18 in_msg
+        SWAP
+        7299947 PUSHINT	//  query_id=0 msg_value storage s_addr first_char in_msg _18 _21=7299947
+        EQUAL	//  query_id=0 msg_value storage s_addr first_char in_msg _22
+        505 THROWIFNOT
+        201330943 PUSHINT	//  query_id=0 msg_value storage s_addr first_char in_msg op=201330943
+        -ROT	//  query_id=0 msg_value storage s_addr op=201330943 first_char in_msg
+      }>	//  query_id=0 msg_value storage s_addr op first_char in_msg
+      OVER	//  query_id=0 msg_value storage s_addr op first_char in_msg first_char
+      114 EQINT	//  query_id=0 msg_value storage s_addr op first_char in_msg _26
+      IF:<{	//  query_id=0 msg_value storage s_addr op first_char in_msg
+        1 2 BLKDROP2	//  query_id=0 msg_value storage s_addr first_char in_msg
+        48 LDU	//  query_id=0 msg_value storage s_addr first_char _28 in_msg
+        SWAP
+        111477746197874 PUSHINT	//  query_id=0 msg_value storage s_addr first_char in_msg _28 _31=111477746197874
+        EQUAL	//  query_id=0 msg_value storage s_addr first_char in_msg _32
+        505 THROWIFNOT
+        3735883980 PUSHINT	//  query_id=0 msg_value storage s_addr first_char in_msg op=3735883980
+        -ROT	//  query_id=0 msg_value storage s_addr op=3735883980 first_char in_msg
+      }>	//  query_id=0 msg_value storage s_addr op first_char in_msg
+      OVER	//  query_id=0 msg_value storage s_addr op first_char in_msg first_char
+      115 EQINT	//  query_id=0 msg_value storage s_addr op first_char in_msg _36
+      IF:<{	//  query_id=0 msg_value storage s_addr op first_char in_msg
+        1 2 BLKDROP2	//  query_id=0 msg_value storage s_addr first_char in_msg
+        32 LDU	//  query_id=0 msg_value storage s_addr first_char _38 in_msg
+        SWAP
+        1952541541 PUSHINT	//  query_id=0 msg_value storage s_addr first_char in_msg _38 _41=1952541541
+        EQUAL	//  query_id=0 msg_value storage s_addr first_char in_msg _42
+        505 THROWIFNOT
+        4276994270 PUSHINT	//  query_id=0 msg_value storage s_addr first_char in_msg op=4276994270
+        -ROT	//  query_id=0 msg_value storage s_addr op=4276994270 first_char in_msg
+      }>	//  query_id=0 msg_value storage s_addr op first_char in_msg
+      SWAP	//  query_id=0 msg_value storage s_addr op in_msg first_char
+      119 EQINT	//  query_id=0 msg_value storage s_addr op in_msg _46
+      IF:<{	//  query_id=0 msg_value storage s_addr op in_msg
+        NIP	//  query_id=0 msg_value storage s_addr in_msg
+        56 LDU	//  query_id=0 msg_value storage s_addr _48 in_msg
+        SWAP
+        29682864265257335 PUSHINT	//  query_id=0 msg_value storage s_addr in_msg _48 _51=29682864265257335
+        EQUAL	//  query_id=0 msg_value storage s_addr in_msg _52
+        505 THROWIFNOT
+        7240620 PUSHINT	//  query_id=0 msg_value storage s_addr in_msg op=7240620
+        SWAP	//  query_id=0 msg_value storage s_addr op=7240620 in_msg
+      }>	//  query_id=0 msg_value storage s_addr op in_msg
+    }>ELSE<{	//  query_id=0 msg_value storage s_addr op in_msg
+      s5 POP	//  in_msg msg_value storage s_addr op
+      s0 s4 XCHG	//  op msg_value storage s_addr in_msg
+      64 LDU	//  op msg_value storage s_addr query_id in_msg
+      s1 s5 XCHG	//  query_id msg_value storage s_addr op in_msg
     }>
-    DUP
-    4276994270 PUSHINT	//  query_id=0 msg_value storage s_addr op op _30=4276994270
-    EQUAL	//  query_id=0 msg_value storage s_addr op _31
-    IFJMP:<{	//  query_id=0 msg_value storage s_addr op
-      DROP	//  query_id=0 msg_value storage s_addr
-      s0 s3 XCHG	//  s_addr msg_value storage query_id=0
+    OVER
+    4276994270 PUSHINT	//  query_id msg_value storage s_addr op in_msg op _58=4276994270
+    EQUAL	//  query_id msg_value storage s_addr op in_msg _59
+    IFJMP:<{	//  query_id msg_value storage s_addr op in_msg
+      2DROP	//  query_id msg_value storage s_addr
+      s0 s3 XCHG	//  s_addr msg_value storage query_id
       add_stake CALLDICT
-    }>	//  query_id=0 msg_value storage s_addr op
-    DUP
-    201330943 PUSHINT	//  query_id=0 msg_value storage s_addr op op _33=201330943
-    EQUAL	//  query_id=0 msg_value storage s_addr op _34
-    IFJMP:<{	//  query_id=0 msg_value storage s_addr op
-      DROP	//  query_id=0 msg_value storage s_addr
-      s3 s0 XCPU	//  s_addr msg_value storage query_id=0 amount=0
+    }>	//  query_id msg_value storage s_addr op in_msg
+    OVER
+    201330943 PUSHINT	//  query_id msg_value storage s_addr op in_msg op _61=201330943
+    EQUAL	//  query_id msg_value storage s_addr op in_msg _62
+    IFJMP:<{	//  query_id msg_value storage s_addr op in_msg
+      NIP	//  query_id msg_value storage s_addr in_msg
+      0 PUSHINT	//  query_id msg_value storage s_addr in_msg amount=0
+      s5 PUSH	//  query_id msg_value storage s_addr in_msg amount=0 query_id
+      IF:<{	//  query_id msg_value storage s_addr in_msg amount=0
+        DROP	//  query_id msg_value storage s_addr in_msg
+        LDGRAMS	//  query_id msg_value storage s_addr _93 _92
+        DROP	//  query_id msg_value storage s_addr amount
+      }>ELSE<{
+        NIP	//  query_id msg_value storage s_addr amount
+      }>
+      s1 s4 XCHG	//  s_addr msg_value storage query_id amount
       lock_stake CALLDICT
-    }>	//  query_id=0 msg_value storage s_addr op
+    }>	//  query_id msg_value storage s_addr op in_msg
+    DROP	//  query_id msg_value storage s_addr op
     DUP
-    7240620 PUSHINT	//  query_id=0 msg_value storage s_addr op op _40=7240620
-    EQUAL	//  query_id=0 msg_value storage s_addr op _41
-    IFJMP:<{	//  query_id=0 msg_value storage s_addr op
-      DROP	//  query_id=0 msg_value storage s_addr
-      s0 s3 XCHG	//  s_addr msg_value storage query_id=0
+    7240620 PUSHINT	//  query_id msg_value storage s_addr op op _68=7240620
+    EQUAL	//  query_id msg_value storage s_addr op _69
+    IFJMP:<{	//  query_id msg_value storage s_addr op
+      DROP	//  query_id msg_value storage s_addr
+      s0 s3 XCHG	//  s_addr msg_value storage query_id
       withdraw_locked CALLDICT
-    }>	//  query_id=0 msg_value storage s_addr op
-    3735883980 PUSHINT	//  query_id=0 msg_value storage s_addr op _43=3735883980
-    EQUAL	//  query_id=0 msg_value storage s_addr _44
-    IFJMP:<{	//  query_id=0 msg_value storage s_addr
+    }>	//  query_id msg_value storage s_addr op
+    3735883980 PUSHINT	//  query_id msg_value storage s_addr op _71=3735883980
+    EQUAL	//  query_id msg_value storage s_addr _72
+    IFJMP:<{	//  query_id msg_value storage s_addr
       s2 PUSH
-      1000000000 PUSHINT	//  query_id=0 msg_value storage s_addr msg_value _46=1000000000
-      GREATER	//  query_id=0 msg_value storage s_addr _47
+      1000000000 PUSHINT	//  query_id msg_value storage s_addr msg_value _74=1000000000
+      GREATER	//  query_id msg_value storage s_addr _75
       112 THROWIFNOT
-      s2 s3 XCHG	//  msg_value query_id=0 storage s_addr
+      s2 s3 XCHG	//  msg_value query_id storage s_addr
       recover_stake CALLDICT
-    }>	//  query_id=0 msg_value storage s_addr
+    }>	//  query_id msg_value storage s_addr
     4 BLKDROP	// 
   }>
   process_elector_response PROC:<{
@@ -1331,40 +1390,62 @@ PROGRAM{
     SWAP	//  msg_value in_msg in_msg_cell
     CTOS	//  msg_value in_msg cs
     4 LDU	//  msg_value in_msg flags cs
-    LDMSGADDR	//  msg_value in_msg flags _33 _32
+    LDMSGADDR	//  msg_value in_msg flags _42 _41
     DROP	//  msg_value in_msg flags s_addr
     elector_address CALLDICT	//  msg_value in_msg flags s_addr elector
     config_address CALLDICT	//  msg_value in_msg flags s_addr elector config
-    s2 s1 PUXC	//  msg_value in_msg flags s_addr config s_addr elector
-    SDEQ	//  msg_value in_msg flags s_addr config _16
-    IF:<{	//  msg_value in_msg flags s_addr config
+    s2 PUSH
+    0 PUSHINT
+    s0 s3 XCHG	//  msg_value in_msg flags s_addr processed?=0 config s_addr elector
+    SDEQ	//  msg_value in_msg flags s_addr processed?=0 config _18
+    IF:<{	//  msg_value in_msg flags s_addr processed?=0 config
+      NIP	//  msg_value in_msg flags s_addr config
       s2 s3 s4 PUSH3	//  msg_value in_msg flags s_addr config flags in_msg msg_value
       process_elector_response CALLDICT
-    }>	//  msg_value in_msg flags s_addr config
-    s1 s(-1) PUXC	//  msg_value in_msg flags s_addr s_addr config
-    SDEQ	//  msg_value in_msg flags s_addr _18
-    IF:<{	//  msg_value in_msg flags s_addr
+      -1 PUSHINT	//  msg_value in_msg flags s_addr config processed?=-1
+      SWAP	//  msg_value in_msg flags s_addr processed?=-1 config
+    }>	//  msg_value in_msg flags s_addr processed? config
+    OVER	//  msg_value in_msg flags s_addr processed? config processed?
+    NOT	//  msg_value in_msg flags s_addr processed? config _21
+    s3 s1 PUXC	//  msg_value in_msg flags s_addr processed? _21 s_addr config
+    SDEQ	//  msg_value in_msg flags s_addr processed? _21 _22
+    AND	//  msg_value in_msg flags s_addr processed? _23
+    IF:<{	//  msg_value in_msg flags s_addr processed?
+      DROP	//  msg_value in_msg flags s_addr
       s1 s2 PUSH2	//  msg_value in_msg flags s_addr flags in_msg
       process_config_response CALLDICT
-    }>	//  msg_value in_msg flags s_addr
-    SWAP
-    1 PUSHINT	//  msg_value in_msg s_addr flags _20=1
-    AND	//  msg_value in_msg s_addr _21
-    IFJMP:<{	//  msg_value in_msg s_addr
-      3 BLKDROP	// 
-    }>	//  msg_value in_msg s_addr
-    load_data INLINECALLDICT	//  msg_value in_msg s_addr _34 _35 _36 _37 _38 _39 _40 _41 _42
-    9 TUPLE	//  msg_value in_msg s_addr storage
-    DUP	//  msg_value in_msg s_addr storage storage
-    CAR	//  msg_value in_msg s_addr storage validator_address
-    s2 s(-1) PUXC	//  msg_value in_msg s_addr storage s_addr validator_address
-    SDEQ	//  msg_value in_msg s_addr storage _27
-    IFJMP:<{	//  msg_value in_msg s_addr storage
-      s3 s0 s0 XCHG3	//  in_msg msg_value storage s_addr
-      process_validator_request CALLDICT
-    }>	//  msg_value in_msg s_addr storage
-    s3 s0 s0 XCHG3	//  in_msg msg_value storage s_addr
-    process_nominator_request CALLDICT
+      -1 PUSHINT	//  msg_value in_msg flags s_addr processed?=-1
+    }>	//  msg_value in_msg flags s_addr processed?
+    s0 s2 XCHG
+    1 PUSHINT	//  msg_value in_msg processed? s_addr flags _26=1
+    AND	//  msg_value in_msg processed? s_addr _27
+    IFJMP:<{	//  msg_value in_msg processed? s_addr
+      4 BLKDROP	// 
+    }>	//  msg_value in_msg processed? s_addr
+    load_data INLINECALLDICT	//  msg_value in_msg processed? s_addr _43 _44 _45 _46 _47 _48 _49 _50 _51
+    9 TUPLE	//  msg_value in_msg processed? s_addr storage
+    DUP	//  msg_value in_msg processed? s_addr storage storage
+    CAR	//  msg_value in_msg processed? s_addr storage validator_address
+    s3 PUSH	//  msg_value in_msg processed? s_addr storage validator_address processed?
+    NOT	//  msg_value in_msg processed? s_addr storage validator_address _33
+    s3 s1 PUXC	//  msg_value in_msg processed? s_addr storage _33 s_addr validator_address
+    SDEQ	//  msg_value in_msg processed? s_addr storage _33 _34
+    AND	//  msg_value in_msg processed? s_addr storage _35
+    IF:<{	//  msg_value in_msg processed? s_addr storage
+      s2 POP	//  msg_value in_msg storage s_addr
+      s2 s3 s1 PUSH3
+      s3 PUSH	//  msg_value in_msg storage s_addr in_msg msg_value storage s_addr
+      process_validator_request CALLDICT	//  msg_value in_msg storage s_addr processed?
+      s0 s2 XCHG	//  msg_value in_msg processed? s_addr storage
+    }>	//  msg_value in_msg processed? s_addr storage
+    s0 s2 XCHG	//  msg_value in_msg storage s_addr processed?
+    NOT	//  msg_value in_msg storage s_addr _37
+    IF:<{	//  msg_value in_msg storage s_addr
+      s2 s3 XCHG	//  in_msg msg_value storage s_addr
+      process_nominator_request CALLDICT
+    }>ELSE<{
+      4 BLKDROP	// 
+    }>
   }>
   get_pool_data PROC:<{
     // 

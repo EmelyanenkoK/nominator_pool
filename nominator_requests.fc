@@ -91,23 +91,29 @@
 }
 
 () process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
-  int op = 0xfeedc0de;
   int query_id = 0;
-  if (in_msg.slice_empty?()) {
-    ;; Special regime of signalling with msg_value signalling
-    int processing_fee = 200000000;
-    if (msg_value == ( 0x0c0010ff + processing_fee) ) {
+  int op = in_msg~load_uint(32);
+  if ( ~ op ) {
+    ;; 4 possible commands lock, stake, recover, withdraw
+    int first_char = in_msg~load_uint(8);
+    if( first_char == 108) { ;; l
+      throw_unless(505, in_msg~load_uint(24) == 7299947); ;; ock
       op = 0x0c0010ff;
     }
-    if (msg_value == (0x006e7bac + processing_fee) ) {
-      op = 0x006e7bac;
-    }
-    if (msg_value == 0xdead10cc) {
+    if( first_char == 114 ) { ;; r
+      throw_unless(505, in_msg~load_uint(48) == 111477746197874); ;; ecover
       op = 0xdead10cc;
     }
+    if( first_char == 115 ) { ;; s
+      throw_unless(505, in_msg~load_uint(32) == 1952541541); ;; take
+      op = 0xfeedc0de;
+    }
+    if( first_char == 119 ) { ;; w
+      throw_unless(505, in_msg~load_uint(56) == 29682864265257335); ;; ithdraw
+      op = 0x006e7bac;
+    }
   } else {
-    int op = in_msg~load_uint(32);
-    int query_id = in_msg~load_uint(64);
+    query_id = in_msg~load_uint(64);
   }
 
 

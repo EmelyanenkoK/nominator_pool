@@ -167,26 +167,40 @@
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, amount, 1);
 }
 
-() process_validator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
+
+;; returns true if found and processed validator request
+(int) process_validator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
+  if (in_msg.slice_empty?()) {
+    return false;
+  }
   int op = in_msg~load_uint(32);
+  if ( ~ op ) { ;; op==0 - comment interface is not available for validator
+    return false;
+  }
   int query_id = in_msg~load_uint(64);
 
   if (op == 0x4e73744b) {
     ;; new stake message
-    return send_new_stake(msg_value, query_id, storage, s_addr, in_msg);
+    send_new_stake(msg_value, query_id, storage, s_addr, in_msg);
+    return true;
   }
   if (op == 0x47657424) {
     ;; recover stake request
-    return recover_stake(msg_value, query_id, storage, s_addr); ;;(op, s_addr, in_msg, query_id);
+    recover_stake(msg_value, query_id, storage, s_addr); ;;(op, s_addr, in_msg, query_id);
+    return true;
   }
   if (op == 0x56744370) {
     ;; check signature and vote for a complaint
-    return check_and_vote_for_complaint(in_msg, msg_value, query_id, storage, s_addr);
+    check_and_vote_for_complaint(in_msg, msg_value, query_id, storage, s_addr);
+    return true;
   }
   if (op == 0x566f7465) {
-    return vote_for_config(in_msg, msg_value, query_id, storage, s_addr);
+    vote_for_config(in_msg, msg_value, query_id, storage, s_addr);
+    return true;
   }
   if (op == 0x006e7bac) {
-    return validator_withdraw(in_msg, msg_value, query_id, storage, s_addr);
+    validator_withdraw(in_msg, msg_value, query_id, storage, s_addr);
+    return true;
   }
+  return false;
 }

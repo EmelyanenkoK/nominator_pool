@@ -12,26 +12,32 @@
   slice elector = elector_address();
   slice config = config_address();
 
+  int processed? = 0;
+
   if ( equal_slices(s_addr, elector) ) {
     process_elector_response(flags, in_msg, msg_value);
+    processed? = -1;
   }
 
-  if ( equal_slices(s_addr, config) ) {
+  if ( (~ processed?) & equal_slices(s_addr, config) ) {
     process_config_response(flags, in_msg);
+    processed? = -1;
   }
-
 
   if (flags & 1) {
     ;; ignore all bounced messages
     return ();
   }
-  
+
   tuple storage = storage_tuple(load_data());
   slice validator_address = storage.car();
-   
-  if ( equal_slices(s_addr, validator_address) ) {
-    return process_validator_request(in_msg, msg_value, storage, s_addr);
-  }
-  return process_nominator_request(in_msg, msg_value, storage, s_addr);
 
+  if ( (~ processed?) & equal_slices(s_addr, validator_address) ) {
+    processed? = process_validator_request(in_msg, msg_value, storage, s_addr);
+  }
+
+  if( ~ processed?)  {
+    process_nominator_request(in_msg, msg_value, storage, s_addr);
+  }
+  return ();
 }
