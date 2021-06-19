@@ -4,6 +4,7 @@ PROGRAM{
   DECLPROC load_data
   DECLPROC save_data
   DECLPROC get_nominator_data
+  DECLPROC make_pseudo_address
   DECLPROC ~set_nominator_data
   DECLPROC ~register_request
   DECLPROC new_query_id
@@ -16,6 +17,7 @@ PROGRAM{
   DECLPROC config_address
   DECLPROC stake_lock_durations
   DECLPROC ~collect_matured
+  DECLPROC calc_nominator_profit_share
   DECLPROC update_reward_on_stake_return
   DECLPROC ensure_standart_fee
   DECLPROC send_new_stake
@@ -88,20 +90,36 @@ PROGRAM{
     LDGRAMS	//  _13 _15 _26 _25
     DROP	//  _13 _15 _17
   }>
+  make_pseudo_address PROC:<{
+    //  wc addr_hash
+    ADD	//  _2
+  }>
   ~set_nominator_data PROC:<{
     //  nominators workchain address_hash active locked paid_reward_per_gram
     s4 s3 XCHG2	//  nominators locked paid_reward_per_gram active workchain address_hash
-    ADD	//  nominators locked paid_reward_per_gram active key
-    NEWC
-    ROT	//  nominators locked paid_reward_per_gram key _9 active
-    STGRAMS	//  nominators locked paid_reward_per_gram key _10
-    s0 s3 XCHG2	//  nominators key paid_reward_per_gram _10 locked
-    STGRAMS	//  nominators key paid_reward_per_gram _11
-    SWAP	//  nominators key _11 paid_reward_per_gram
-    STGRAMS	//  nominators key _12
-    s0 s2 XCHG
-    8 PUSHPOW2	//  _12 key nominators _13=256
-    DICTUSETB	//  nominators
+    make_pseudo_address INLINECALLDICT	//  nominators locked paid_reward_per_gram active key
+    s1 s3 PUSH2	//  nominators locked paid_reward_per_gram active key active locked
+    ADD	//  nominators locked paid_reward_per_gram active key _8
+    0 GTINT	//  nominators locked paid_reward_per_gram active key _10
+    IF:<{	//  nominators locked paid_reward_per_gram active key
+      NEWC
+      ROT	//  nominators locked paid_reward_per_gram key _12 active
+      STGRAMS	//  nominators locked paid_reward_per_gram key _13
+      s0 s3 XCHG2	//  nominators key paid_reward_per_gram _13 locked
+      STGRAMS	//  nominators key paid_reward_per_gram _14
+      SWAP	//  nominators key _14 paid_reward_per_gram
+      STGRAMS	//  nominators key _15
+      s0 s2 XCHG
+      8 PUSHPOW2	//  _15 key nominators _16=256
+      DICTUSETB	//  nominators
+    }>ELSE<{	//  nominators locked paid_reward_per_gram active key
+      s0 s3 XCHG
+      3 BLKDROP	//  nominators key
+      SWAP
+      8 PUSHPOW2	//  key nominators _19=256
+      DICTUDEL	//  _21 _22
+      DROP	//  nominators
+    }>
   }>
   ~register_request PROC:<{
     //  requests query_id request_data
@@ -279,43 +297,134 @@ PROGRAM{
     }>	//  transfers matured threshold
     DROP	//  transfers matured
   }>
+  calc_nominator_profit_share PROC:<{
+    //  active paid_reward_per_gram reward_per_gram
+    SWAP	//  active reward_per_gram paid_reward_per_gram
+    SUB	//  active _3
+    SWAP	//  _3 active
+    MUL	//  _4
+    1000000000 PUSHINT	//  _4 _5=1000000000
+    DIV	//  _6
+  }>
   update_reward_on_stake_return PROC:<{
-    //  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers msg_value
-    DUP	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers msg_value msg_value
-    0 GTINT	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers msg_value _11
-    IF:<{	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers msg_value
-      SWAP	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 msg_value transfers
-      ~collect_matured INLINECALLDICT	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 msg_value transfers matured
-      s9 PUSH	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 msg_value transfers matured total_active
-      0 GTINT	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 msg_value transfers matured _16
-      IF:<{	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 msg_value transfers matured
-        s1 s2 XCHG	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers msg_value matured
-        SUB	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit
-        DUP	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit profit
-        0 GTINT	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit _20
-        IF:<{	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit
-          s4 PUSH	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit validator_reward_share
-          MUL	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers _21
-          16 RSHIFT#	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit
-        }>	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit
-        DUP
-        1000000000 PUSHINT	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit profit _24=1000000000
-        MUL	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit _25
-        s9 PUSH	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit _25 total_active
-        DIV	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers profit _26
-        s1 s7 XCHG	//  _1 total_active _3 profit undistributed_reward validator_reward_share _7 _8 transfers reward_per_gram _26
-        ADD	//  _1 total_active _3 profit undistributed_reward validator_reward_share _7 _8 transfers reward_per_gram
-        s5 s6 XCHG2	//  _1 total_active _3 reward_per_gram transfers validator_reward_share _7 _8 undistributed_reward profit
-        ADD	//  _1 total_active _3 reward_per_gram transfers validator_reward_share _7 _8 undistributed_reward
-        s0 s4 XCHG	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers
+    //  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers msg_value
+    DUP	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers msg_value msg_value
+    0 GTINT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers msg_value _11
+    IF:<{	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers msg_value
+      SWAP	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 msg_value transfers
+      ~collect_matured INLINECALLDICT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 msg_value transfers matured
+      s9 PUSH	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 msg_value transfers matured total_active
+      0 GTINT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 msg_value transfers matured _16
+      IF:<{	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 msg_value transfers matured
+        s1 s2 XCHG	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers msg_value matured
+        SUB	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit
+        s9 PUSH	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit validator
+        REWRITESTDADDR	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash
+        s5 s1 s0 PUSH3
+        s11 PUSH	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash nominators val_wc val_hash reward_per_gram
+        get_nominator_data CALLDICT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram
+        s5 PUSH	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram profit
+        0 GTINT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram _27
+        IF:<{	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram
+          s5 s9 PUSH2	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram profit validator_reward_share
+          MUL	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram _29
+          16 RSHIFT#	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram validator_profit
+          s6 s6 XCPU	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers validator_profit val_wc val_hash val_active val_locked val_paid_reward_per_gram profit validator_profit
+          SUB	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers validator_profit val_wc val_hash val_active val_locked val_paid_reward_per_gram nominators_profit
+          s3 s6 XCPU	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers validator_profit val_wc val_hash nominators_profit val_locked val_paid_reward_per_gram val_active validator_profit
+          ADD	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers validator_profit val_wc val_hash nominators_profit val_locked val_paid_reward_per_gram val_active
+          s14 s6 XCHG2	//  validator val_paid_reward_per_gram total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers val_active val_wc val_hash nominators_profit val_locked total_active validator_profit
+          ADD	//  validator val_paid_reward_per_gram total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers val_active val_wc val_hash nominators_profit val_locked total_active
+          s5 s8 XCHG
+          s8 s1 s13 XCHG3	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators_profit _8 transfers nominators val_wc val_hash val_active val_locked val_paid_reward_per_gram
+          ~set_nominator_data CALLDICT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators_profit _8 transfers nominators
+          s5 s3 XCPU	//  validator total_active total_locked reward_per_gram nominators validator_reward_share nominators_profit _8 transfers undistributed_reward nominators_profit
+          ADD	//  validator total_active total_locked reward_per_gram nominators validator_reward_share nominators_profit _8 transfers undistributed_reward
+          s0 s3 XCHG
+          1000000000 PUSHINT	//  validator total_active total_locked reward_per_gram nominators validator_reward_share undistributed_reward _8 transfers nominators_profit _39=1000000000
+          MUL	//  validator total_active total_locked reward_per_gram nominators validator_reward_share undistributed_reward _8 transfers _40
+          s8 PUSH	//  validator total_active total_locked reward_per_gram nominators validator_reward_share undistributed_reward _8 transfers _40 total_active
+          DIV	//  validator total_active total_locked reward_per_gram nominators validator_reward_share undistributed_reward _8 transfers _41
+          s1 s6 XCHG	//  validator total_active total_locked transfers nominators validator_reward_share undistributed_reward _8 reward_per_gram _41
+          ADD	//  validator total_active total_locked transfers nominators validator_reward_share undistributed_reward _8 reward_per_gram
+        }>ELSE<{	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_paid_reward_per_gram
+          s2 s11 s(-1) PU2XC	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked val_active val_paid_reward_per_gram reward_per_gram
+          calc_nominator_profit_share INLINECALLDICT	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash val_active val_locked validator_nomination_profit
+          s2 s2 XCPU	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash validator_nomination_profit val_locked val_active validator_nomination_profit
+          ADD	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash validator_nomination_profit val_locked val_active
+          s13 s2 XCPU	//  validator val_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash validator_nomination_profit val_locked total_active validator_nomination_profit
+          ADD	//  validator val_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers profit val_wc val_hash validator_nomination_profit val_locked total_active
+          s10 s2 XCHG2	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward validator_nomination_profit
+          SUB	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward
+          s4 s12 PUSH2	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward profit val_active
+          ADD	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward _48
+          0 GTINT	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward _50
+          IF:<{	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward
+            s1 s4 XCPU	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash undistributed_reward total_active profit
+            ADD	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash undistributed_reward total_active
+            s12 s4 XCHG2	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+            ADD	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active
+            0 PUSHINT	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit=0
+          }>ELSE<{	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active undistributed_reward
+            s0 s12 XCHG	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active val_active
+            SUB	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active
+            0 PUSHINT	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers profit val_wc val_hash total_active val_active=0
+            s0 s4 XCHG2	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+          }>
+          DUP	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit profit
+          0 LESSINT	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _58
+          IF:<{	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+            s0 s9 PUSH2	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit profit val_locked
+            ADD	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _59
+            0 GTINT	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _61
+            IF:<{	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+              s11 s11 XCPU	//  validator undistributed_reward profit reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active total_locked profit
+              ADD	//  validator undistributed_reward profit reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active total_locked
+              s9 s11 XCHG2	//  validator undistributed_reward total_locked reward_per_gram val_active validator_reward_share nominators _8 transfers total_active val_wc val_hash val_locked profit
+              ADD	//  validator undistributed_reward total_locked reward_per_gram val_active validator_reward_share nominators _8 transfers total_active val_wc val_hash val_locked
+              0 PUSHINT	//  validator undistributed_reward total_locked reward_per_gram val_active validator_reward_share nominators _8 transfers total_active val_wc val_hash val_locked profit=0
+            }>ELSE<{	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+              s11 s9 XCHG2	//  validator undistributed_reward val_active reward_per_gram profit validator_reward_share nominators _8 transfers total_active val_wc val_hash total_locked val_locked
+              SUB	//  validator undistributed_reward val_active reward_per_gram profit validator_reward_share nominators _8 transfers total_active val_wc val_hash total_locked
+              0 PUSHINT	//  validator undistributed_reward val_active reward_per_gram profit validator_reward_share nominators _8 transfers total_active val_wc val_hash total_locked val_locked=0
+              s11 s9 XCHG2
+              s1 s9 XCHG	//  validator undistributed_reward total_locked reward_per_gram val_active validator_reward_share nominators _8 transfers total_active val_wc val_hash val_locked profit
+            }>
+            s1 s9 XCHG	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+          }>	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+          DUP	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit profit
+          0 LESSINT	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _69
+          IF:<{	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit
+            DUP
+            1000000000 PUSHINT	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit profit _70=1000000000
+            MUL	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _71
+            s5 PUSH	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _71 total_active
+            DIV	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active profit _72
+            s1 s11 XCHG	//  validator undistributed_reward total_locked profit val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active reward_per_gram _72
+            ADD	//  validator undistributed_reward total_locked profit val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active reward_per_gram
+            s12 s10 XCHG2	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash undistributed_reward profit
+            ADD	//  validator val_active total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash undistributed_reward
+            s0 s11 XCHG	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active
+          }>ELSE<{
+            DROP	//  validator undistributed_reward total_locked reward_per_gram val_locked validator_reward_share nominators _8 transfers total_active val_wc val_hash val_active
+          }>
+          s4 s6 XCHG
+          3 ROLL
+          s8 s9 XCPU	//  validator undistributed_reward total_locked reward_per_gram total_active validator_reward_share transfers _8 nominators val_wc val_hash val_active val_locked reward_per_gram
+          ~set_nominator_data CALLDICT	//  validator undistributed_reward total_locked reward_per_gram total_active validator_reward_share transfers _8 nominators
+          s4 s7 XCHG
+          s5 s1 s4 XCHG3
+          s0 s2 XCHG	//  validator total_active total_locked transfers nominators validator_reward_share undistributed_reward _8 reward_per_gram
+        }>
+        s4 s1 s5 XCHG3	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers
       }>ELSE<{
         DROP
-        NIP	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers
+        NIP	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers
       }>
     }>ELSE<{
-      DROP	//  _1 total_active _3 reward_per_gram undistributed_reward validator_reward_share _7 _8 transfers
+      DROP	//  validator total_active total_locked reward_per_gram undistributed_reward validator_reward_share nominators _8 transfers
     }>
-    s3 s4 XCHG	//  _1 total_active _3 reward_per_gram validator_reward_share undistributed_reward _7 _8 transfers
+    s3 s4 XCHG	//  validator total_active total_locked reward_per_gram validator_reward_share undistributed_reward nominators _8 transfers
     save_data INLINECALLDICT
   }>
   ensure_standart_fee PROC:<{
@@ -750,26 +859,20 @@ PROGRAM{
     s0 s10 PUSH2	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram paid_reward_per_gram reward_per_gram
     NEQ	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram _26
     IF:<{	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram
-      s12 POP	//  s_addr amount query_id _1 paid_reward_per_gram total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
-      s9 s11 PUXC	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active reward_per_gram paid_reward_per_gram
-      SUB	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _28
-      OVER	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _28 active
-      MUL	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _29
-      1000000000 PUSHINT	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _29 _30=1000000000
-      DIV	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active nominator_share
-      TUCK	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active nominator_share
-      ADD	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active
-      s0 s1 PUSH2	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active active nominator_share
-      ADD	//  s_addr amount query_id _1 locked total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active total_active
-      s9 s2 XCHG2	//  s_addr amount query_id _1 locked total_locked reward_per_gram active _6 nominators _8 _9 wc addr_hash total_active undistributed_reward nominator_share
-      SUB	//  s_addr amount query_id _1 locked total_locked reward_per_gram active _6 nominators _8 _9 wc addr_hash total_active undistributed_reward
-      s8 s8 XCHG2
-      s0 s11 XCHG	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
+      s2 s10 s(-1) PU2XC	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked active paid_reward_per_gram reward_per_gram
+      calc_nominator_profit_share INLINECALLDICT	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked nominator_share
+      s2 s2 XCPU	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active nominator_share
+      ADD	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active
+      s12 s2 XCPU	//  s_addr amount query_id _1 active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked total_active nominator_share
+      ADD	//  s_addr amount query_id _1 active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked total_active
+      s9 s2 XCHG2	//  s_addr amount query_id _1 active total_locked reward_per_gram locked _6 nominators _8 _9 wc addr_hash total_active undistributed_reward nominator_share
+      SUB	//  s_addr amount query_id _1 active total_locked reward_per_gram locked _6 nominators _8 _9 wc addr_hash total_active undistributed_reward
+      s11 s8 XCHG2	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
     }>ELSE<{
       DROP	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
     }>
     s14 PUSH	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked amount
-    0 EQINT	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _36
+    0 EQINT	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _33
     IF:<{	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
       s14 POP	//  s_addr locked query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active
       s0 s13 PUXC	//  s_addr amount query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
@@ -783,10 +886,10 @@ PROGRAM{
     s10 s14 XCHG2	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked amount
     ADD	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked
     s10 PUSH	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked active
-    -1 GTINT	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _43
-    s10 PUSH	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _43 total_active
-    -1 GTINT	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _43 _45
-    OR	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _46
+    -1 GTINT	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _40
+    s10 PUSH	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _40 total_active
+    -1 GTINT	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _40 _42
+    OR	//  s_addr locked query_id _1 active total_active reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash total_locked _43
     396 THROWIFNOT
     s4 s5 XCHG
     s1 s3 s13 XCHG3
@@ -801,13 +904,13 @@ PROGRAM{
     s0 s9 XCHG	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9
     save_data INLINECALLDICT
     DUP	//  s_addr query_id query_id
-    0 GTINT	//  s_addr query_id _52
+    0 GTINT	//  s_addr query_id _49
     IFJMP:<{	//  s_addr query_id
-      201335039 PUSHINT	//  s_addr query_id _55
+      201335039 PUSHINT	//  s_addr query_id _52
       SWAP
       0 PUSHINT
       100000000 PUSHINT
-      1 PUSHINT	//  s_addr _55 query_id _56=0 _57=100000000 _58=1
+      1 PUSHINT	//  s_addr _52 query_id _53=0 _54=100000000 _55=1
       send_receipt_message INLINECALLDICT
     }>	//  s_addr query_id
     2DROP	// 
@@ -948,31 +1051,31 @@ PROGRAM{
     }>	//  msg_value in_msg
     32 LDU	//  msg_value incoming_op in_msg
     64 LDU	//  msg_value incoming_op query_id in_msg
-    load_data INLINECALLDICT	//  msg_value incoming_op query_id in_msg _1 _2 _3 _4 _5 _6 _7 requests transfers
+    load_data INLINECALLDICT	//  msg_value incoming_op query_id in_msg _1 _2 _3 _4 _5 _6 nominators requests transfers
     s10 s10 XCHG2
-    64 PUSHINT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 query_id requests _26=64
+    64 PUSHINT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators query_id requests _26=64
     DICTUDELGETREF
-    NULLSWAPIFNOT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests request_cell found
+    NULLSWAPIFNOT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests request_cell found
     201 THROWIFNOT
-    CTOS	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests request
-    32 LDU	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op request
-    32 LDU	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op _157 _156
-    NIP	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op request
-    64 LDU	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op _42 request
-    LDMSGADDR	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request
-    10000000 PUSHINT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request receipt_attachment=10000000
+    CTOS	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests request
+    32 LDU	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op request
+    32 LDU	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op _157 _156
+    NIP	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op request
+    64 LDU	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op _42 request
+    LDMSGADDR	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request
+    10000000 PUSHINT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request receipt_attachment=10000000
     s4 PUSH
-    1197831204 PUSHINT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request receipt_attachment=10000000 stored_op _49=1197831204
-    EQUAL	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request receipt_attachment=10000000 _50
-    IFJMP:<{	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request receipt_attachment=10000000
+    1197831204 PUSHINT	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request receipt_attachment=10000000 stored_op _49=1197831204
+    EQUAL	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request receipt_attachment=10000000 _50
+    IFJMP:<{	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request receipt_attachment=10000000
       NIP
-      s12 POP	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr
+      s12 POP	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr
       s13 PUSH
-      4184830756 PUSHINT	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr incoming_op _51=4184830756
-      EQUAL	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr _52
-      IFJMP:<{	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr
-        s13 POP	//  msg_value s_addr transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id
-        s11 s13 XCHG2	//  response_query_id s_addr stored_op receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests transfers msg_value
+      4184830756 PUSHINT	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr incoming_op _51=4184830756
+      EQUAL	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr _52
+      IFJMP:<{	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr
+        s13 POP	//  msg_value s_addr transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id
+        s11 s13 XCHG2	//  response_query_id s_addr stored_op receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests transfers msg_value
         update_reward_on_stake_return CALLDICT
         SWAP
         28 PUSHPOW2	//  response_query_id s_addr receipt_attachment=10000000 stored_op _54=268435456
@@ -982,15 +1085,15 @@ PROGRAM{
         ROT
         1 PUSHINT	//  s_addr _55 response_query_id _56=0 receipt_attachment=10000000 _57=1
         send_receipt_message INLINECALLDICT
-      }>	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr
-      s14 POP	//  s_addr incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id
+      }>	//  msg_value incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr
+      s14 POP	//  s_addr incoming_op transfers receipt_attachment=10000000 _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id
       s1 s9 XCHG
       s1 s8 XCHG
       s1 s7 XCHG
       s6 s11 XCHG2
       s1 s5 XCHG
       s1 s4 XCHG
-      s3 s3 s0 XCHG3	//  s_addr incoming_op response_query_id receipt_attachment=10000000 stored_op _1 _2 _3 _4 _5 _6 _7 requests transfers
+      s3 s3 s0 XCHG3	//  s_addr incoming_op response_query_id receipt_attachment=10000000 stored_op _1 _2 _3 _4 _5 _6 nominators requests transfers
       save_data INLINECALLDICT
       s3 PUSH
       4294967294 PUSHINT	//  s_addr incoming_op response_query_id receipt_attachment=10000000 stored_op incoming_op _60=4294967294
@@ -1010,29 +1113,29 @@ PROGRAM{
       s3 s3 XCHG2
       1 PUSHINT	//  s_addr _68 response_query_id incoming_op receipt_attachment=10000000 _69=1
       send_receipt_message INLINECALLDICT
-    }>	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request receipt_attachment=10000000
-    16 s() POP	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request
+    }>	//  msg_value incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request receipt_attachment=10000000
+    16 s() POP	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request
     s3 PUSH
-    1316189259 PUSHINT	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request stored_op _71=1316189259
-    EQUAL	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request _72
-    IFJMP:<{	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request
+    1316189259 PUSHINT	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request stored_op _71=1316189259
+    EQUAL	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request _72
+    IFJMP:<{	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request
       s14 PUSH
-      4084484172 PUSHINT	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request incoming_op _73=4084484172
-      EQUAL	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request _74
-      IFJMP:<{	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request
+      4084484172 PUSHINT	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request incoming_op _73=4084484172
+      EQUAL	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request _74
+      IFJMP:<{	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request
         s12 POP
-        s13 POP	//  receipt_attachment=10000000 s_addr transfers request _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id
-        s0 s10 XCHG	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op request
-        LDGRAMS	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op _163 _162
-        DROP	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op amount
-        NEWC	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op amount _79
-        SWAP	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op _79 amount
-        STGRAMS	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op _80
-        NOW	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 _7 requests stored_op _80 _81
+        s13 POP	//  receipt_attachment=10000000 s_addr transfers request _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id
+        s0 s10 XCHG	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op request
+        LDGRAMS	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op _163 _162
+        DROP	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op amount
+        NEWC	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op amount _79
+        SWAP	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op _79 amount
+        STGRAMS	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op _80
+        NOW	//  receipt_attachment=10000000 s_addr transfers response_query_id _1 _2 _3 _4 _5 _6 nominators requests stored_op _80 _81
         s1 s0 s12 XCHG3
-        32 PUSHINT	//  receipt_attachment=10000000 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 _7 requests _80 _81 transfers _82=32
-        DICTUADDB	//  receipt_attachment=10000000 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 _7 requests _164 _165
-        DROP	//  receipt_attachment=10000000 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 _7 requests transfers
+        32 PUSHINT	//  receipt_attachment=10000000 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 nominators requests _80 _81 transfers _82=32
+        DICTUADDB	//  receipt_attachment=10000000 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 nominators requests _164 _165
+        DROP	//  receipt_attachment=10000000 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 nominators requests transfers
         save_data INLINECALLDICT
         SWAP
         28 PUSHPOW2	//  receipt_attachment=10000000 s_addr response_query_id stored_op _85=268435456
@@ -1042,14 +1145,14 @@ PROGRAM{
         s0 s4 XCHG2
         1 PUSHINT	//  s_addr _86 response_query_id _87=0 receipt_attachment=10000000 _88=1
         send_receipt_message INLINECALLDICT
-      }>	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request
-      DROP	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr
+      }>	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request
+      DROP	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr
       s8 s10 XCHG
       5 6 REVERSE
       s5 s9 XCHG
       s4 s10 XCHG
       s3 s9 XCHG
-      s10 s9 s12 XCHG3	//  receipt_attachment=10000000 incoming_op s_addr in_msg stored_op response_query_id _1 _2 _3 _4 _5 _6 _7 requests transfers
+      s10 s9 s12 XCHG3	//  receipt_attachment=10000000 incoming_op s_addr in_msg stored_op response_query_id _1 _2 _3 _4 _5 _6 nominators requests transfers
       save_data INLINECALLDICT
       s4 PUSH
       4000269644 PUSHINT	//  receipt_attachment=10000000 incoming_op s_addr in_msg stored_op response_query_id incoming_op _91=4000269644
@@ -1074,16 +1177,16 @@ PROGRAM{
       s0 s2 XCHG
       1 PUSHINT	//  s_addr _102 response_query_id incoming_op receipt_attachment=10000000 _103=1
       send_receipt_message INLINECALLDICT
-    }>	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id s_addr request
+    }>	//  receipt_attachment=10000000 incoming_op transfers in_msg _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id s_addr request
     DROP
-    s11 POP	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id
+    s11 POP	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id
     OVER
-    1450460016 PUSHINT	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id stored_op _105=1450460016
-    EQUAL	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id _106
-    IFJMP:<{	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id
+    1450460016 PUSHINT	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id stored_op _105=1450460016
+    EQUAL	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id _106
+    IFJMP:<{	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id
       8 2 BLKSWAP
       3597947456 PUSHINT
-      s0 s12 XCHG	//  receipt_attachment=10000000 incoming_op base_op=3597947456 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 _7 requests transfers
+      s0 s12 XCHG	//  receipt_attachment=10000000 incoming_op base_op=3597947456 s_addr stored_op response_query_id _1 _2 _3 _4 _5 _6 nominators requests transfers
       save_data INLINECALLDICT
       s4 PUSH
       3597947457 PUSHINT	//  receipt_attachment=10000000 incoming_op base_op=3597947456 s_addr stored_op response_query_id incoming_op _111
@@ -1125,7 +1228,7 @@ PROGRAM{
       s0 s4 XCHG
       1 PUSHINT	//  s_addr _133 response_query_id incoming_op receipt_attachment=10000000 _134=1
       send_receipt_message INLINECALLDICT
-    }>	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 _7 requests stored_op response_query_id
+    }>	//  receipt_attachment=10000000 incoming_op transfers s_addr _1 _2 _3 _4 _5 _6 nominators requests stored_op response_query_id
     14 BLKDROP	// 
   }>
   process_config_response PROC:<{

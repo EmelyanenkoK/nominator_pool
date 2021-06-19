@@ -5,7 +5,7 @@
   }
   int incoming_op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
-  (slice _1, int _2, int _3, int _4, int _5, int _6, cell _7, cell requests, cell transfers) = load_data();
+  (slice _1, int _2, int _3, int _4, int _5, int _6, cell nominators, cell requests, cell transfers) = load_data();
   (cell request_cell, int found) = requests~udict_delete_get_ref?(64, query_id);
   throw_unless(201, found);
   slice request = request_cell.begin_parse();
@@ -18,11 +18,11 @@
     ;; If stake returns  correctly op = 0xf96f7324, else 0xfffffffe
     ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L403-426
     if(incoming_op == 0xf96f7324) {
-      update_reward_on_stake_return(_1, _2, _3, _4, _5, _6, _7, requests, transfers, msg_value);
+      update_reward_on_stake_return(_1, _2, _3, _4, _5, _6, nominators, requests, transfers, msg_value);
       ;; notify sender about success
       return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
     }
-    save_data(_1, _2, _3, _4, _5, _6, _7, requests, transfers);
+    save_data(_1, _2, _3, _4, _5, _6, nominators, requests, transfers);
     if(incoming_op == 0xfffffffe) {
       return send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, 0, receipt_attachment, 1);
     }
@@ -36,10 +36,10 @@
     if(incoming_op == 0xf374484c) {
       int amount = request~load_grams();
       transfers~udict_add_builder?(32, now(), begin_cell().store_grams(amount));
-      save_data(_1, _2, _3, _4, _5, _6, _7, requests, transfers);
+      save_data(_1, _2, _3, _4, _5, _6, nominators, requests, transfers);
       return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
     }
-    save_data(_1, _2, _3, _4, _5, _6, _7, requests, transfers);
+    save_data(_1, _2, _3, _4, _5, _6, nominators, requests, transfers);
     if(incoming_op == 0xee6f454c) {
       int error_code = in_msg~load_uint(32);
       return send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, error_code, receipt_attachment, 1);
@@ -52,7 +52,7 @@
     ;; Possible answers are 0xd6745240 + [-3: 2]
     ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L581
     int base_op = 0xd6745240;
-    save_data(_1, _2, _3, _4, _5, _6, _7, requests, transfers);
+    save_data(_1, _2, _3, _4, _5, _6, nominators, requests, transfers);
     if ( (incoming_op == base_op + 1) | (incoming_op == (base_op + 1)) ) {
       return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, incoming_op - base_op, receipt_attachment, 1);
     }

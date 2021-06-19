@@ -72,13 +72,21 @@
   return (nominator~load_grams(), nominator~load_grams(), nominator~load_grams());
 }
 
+int make_pseudo_address(int wc, int addr_hash) inline {
+  return wc + addr_hash;
+}
+
 (cell, ()) ~set_nominator_data (cell nominators,
                                 int workchain, int address_hash,
                                 int active, int locked, int paid_reward_per_gram) {
-  int key = workchain + address_hash;
-  nominators~udict_set_builder(256, key, begin_cell().store_grams(active)
+  int key = make_pseudo_address(workchain, address_hash);
+  if (active + locked > 0) {
+    nominators~udict_set_builder(256, key, begin_cell().store_grams(active)
                                                    .store_grams(locked)
                                                    .store_grams(paid_reward_per_gram));
+  } else {
+    nominators~udict_delete?(256,key);
+  }
   return (nominators, ());
 }
 

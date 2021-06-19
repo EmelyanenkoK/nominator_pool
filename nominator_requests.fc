@@ -42,9 +42,9 @@
   (int active, int locked, int paid_reward_per_gram) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
   ;; distribute profit to nominator
   if(paid_reward_per_gram != reward_per_gram) {
-    int nominator_share = (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
+    int nominator_share = calc_nominator_profit_share(active, paid_reward_per_gram, reward_per_gram);
     active = active + nominator_share;
-    total_active = active + nominator_share;
+    total_active = total_active + nominator_share;
     undistributed_reward = undistributed_reward - nominator_share;
   }
   if( amount == 0) {
