@@ -174,7 +174,7 @@
     return false;
   }
   int op = in_msg~load_uint(32);
-  if ( ~ op ) { ;; op==0 - comment interface is not available for validator
+  if ( op == 0 ) { ;; op==0 - comment interface is not available for validator
     return false;
   }
   int query_id = in_msg~load_uint(64);

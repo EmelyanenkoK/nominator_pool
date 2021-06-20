@@ -44,11 +44,13 @@
            .begin_parse();
 }
 
-(int, int) stake_lock_durations() {
+(int, int, int) stake_lock_durations() {
     slice validation_params = config_param(15).begin_parse();
     int validators_elected_for = validation_params~load_uint(32);
     validation_params~load_bits(64);
     int stake_held_for = validation_params~load_uint(32);
-    return (validators_elected_for, stake_held_for);
+    slice set_params = config_param(34).begin_parse();
+    set_params~load_bits(8);
+    int utime_since = set_params~load_uint(32);
+    return (validators_elected_for, stake_held_for, utime_since);
 }
-

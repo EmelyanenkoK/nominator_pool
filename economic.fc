@@ -1,7 +1,7 @@
 (cell, (int)) ~collect_matured(cell transfers) inline {
-  (int validators_elected_for, int stake_held_for) = stake_lock_durations();
+  (int validators_elected_for, int stake_held_for, int prev_set_utime_since) = stake_lock_durations();
   int matured = 0;
-  int threshold = validators_elected_for + stake_held_for;
+  int threshold = prev_set_utime_since + stake_held_for;
   do {
     var (transfers', i, transfer, f) = transfers.udict_delete_get_min(32);
     f~touch();

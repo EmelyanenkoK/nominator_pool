@@ -43,7 +43,7 @@ builder store_grams_string(builder msg, int amount) {
   repeat( 9 - rl ) {
     msg = msg.store_uint(48, 8); ;; " "
   }
-  return msg.store_uint(rv, rv * 8);
+  return msg.store_uint(rv, rl * 8);
 }
 
 () send_text_stake_accept_message(slice addr, int stake, int value) impure {
