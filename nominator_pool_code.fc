@@ -37,7 +37,7 @@
   }
 
   if( ~ processed?)  {
-    process_nominator_request(in_msg, msg_value, storage, s_addr);
+    processed? = process_nominator_request(in_msg, msg_value, storage, s_addr);
   }
-  return ();
+  throw_unless(404, processed?);
 }

@@ -23,13 +23,14 @@
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
   total_active = total_active + stake;
   save_data(_1, total_active, _3, reward_per_gram, undistributed_reward, _6, nominators, _8, _9);
-  if(query_id > 0) {
+  if ( query_id ) {
     return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
+  } else {
+    return send_text_stake_accept_message(s_addr, stake, put_fee / 2);
   }
 }
 
 () lock_stake (slice s_addr, int msg_value, tuple storage, int query_id, int amount) impure {
-  throw_unless(395, msg_value >= 200000000); ;; Processing fee
   (slice _1,
    int total_active,
    int total_locked,
@@ -57,13 +58,14 @@
   throw_unless (396, (active >= 0) | (total_active >= 0)); ;; This check here to get error code, negative active will throw anyway during serialization
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
   save_data(_1, total_active, total_locked, reward_per_gram, undistributed_reward, _6, nominators, _8, _9);
-  if(query_id > 0) {
-    return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 100000000, 1);
+  if ( query_id ) {
+    return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 0, 64);
+  } else {
+    return send_text_lock_accept_message(s_addr, amount);
   }
 }
 
 () withdraw_locked (slice s_addr, int msg_value, tuple storage, int query_id) impure {
-  throw_unless(397, msg_value >= 200000000); ;; Processing fee
   (slice _1,
    int total_active,
    int total_locked,
@@ -87,31 +89,18 @@
   throw_unless (398, total_locked >= 0); ;; This check here to get error code, negative locked will throw anyway during serialization
   nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram);
   save_data(_1, total_active, total_locked, reward_per_gram, undistributed_reward, _6, nominators, _8, _9);
-  return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 0);
+  if ( query_id ) {
+    return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 64);
+  } else {
+    return send_text_withdraw_message(s_addr, amount);
+  }
 }
 
-() process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
+(int) process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
   int query_id = 0;
   int op = in_msg~load_uint(32);
   if ( ~ op ) {
-    ;; 4 possible commands lock, stake, recover, withdraw
-    int first_char = in_msg~load_uint(8);
-    if( first_char == 108) { ;; l
-      throw_unless(505, in_msg~load_uint(24) == 7299947); ;; ock
-      op = 0x0c0010ff;
-    }
-    if( first_char == 114 ) { ;; r
-      throw_unless(505, in_msg~load_uint(48) == 111477746197874); ;; ecover
-      op = 0xdead10cc;
-    }
-    if( first_char == 115 ) { ;; s
-      throw_unless(505, in_msg~load_uint(32) == 1952541541); ;; take
-      op = 0xfeedc0de;
-    }
-    if( first_char == 119 ) { ;; w
-      throw_unless(505, in_msg~load_uint(56) == 29682864265257335); ;; ithdraw
-      op = 0x006e7bac;
-    }
+    op = in_msg~parse_text_command();
   } else {
     query_id = in_msg~load_uint(64);
   }
@@ -119,7 +108,8 @@
 
   if (op == 0xfeedc0de ) {
     ;; put stake into pool
-    return add_stake(s_addr, msg_value, storage, query_id);
+    add_stake(s_addr, msg_value, storage, query_id);
+    return true;
   }
   if (op == 0x0c0010ff ) {
     ;; lock stake from being used for validation
@@ -127,14 +117,18 @@
     if (query_id) {
       amount = in_msg~load_grams();
     }
-    return lock_stake(s_addr, msg_value, storage, query_id, amount);
+    lock_stake(s_addr, msg_value, storage, query_id, amount);
+    return true;
   }
   if (op == 0x006e7bac ) {
-    return withdraw_locked(s_addr, msg_value, storage, query_id);
+    withdraw_locked(s_addr, msg_value, storage, query_id);
+    return true;
   }
   if (op == 0xdead10cc) {
     ;; validator's function allowed for nominators
     throw_unless(112, msg_value > 1000000000);
-    return recover_stake(msg_value, query_id, storage, s_addr);
+    recover_stake(msg_value, query_id, storage, s_addr);
+    return true;
   }
+  return false;
 }
