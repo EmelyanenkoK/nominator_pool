@@ -1,1 +1,1 @@
-`./func -SPA stdlib.fc nonstdlib.fc storage.fc utils.fc message_utils.fc config_utils.fc economic.fc validator_requests.fc nominator_requests.fc elector_response.fc config_response.fc nominator_pool_code.fc get_methods.fc -o nominator-pool-code.fif`
+`func -SPA stdlib.fc nonstdlib.fc storage.fc utils.fc message_utils.fc config_utils.fc economic.fc text_utils.fc validator_requests.fc nominator_requests.fc elector_response.fc config_response.fc nominator_pool_code.fc get_methods.fc -o nominator-pool-code.fif`
