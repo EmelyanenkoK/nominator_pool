@@ -3,7 +3,7 @@
 ;; chances of collision and overflow are negligible. -1:00..000 has no ability to
 ;; stake in pool
 ;; psevdoAddress#_ address:bits256 = PsevdoAddressInt;
-;; nominator_data#_ active_amount:Grams locked_amount:Grams paid_reward_per_gram:Grams = NominatorData;
+;; nominator_data#_ active_amount:Grams locked_amount:Grams paid_reward_per_gram:int48 last_stake_utime:uint32 = NominatorData;
 ;; nominators_data#_ dict:(HashmapE PsevdoAddressInt NominatorData) = Nominators;
 ;;
 ;; query_id#_ id:uint64 = QueryId;
@@ -63,13 +63,13 @@
   set_data(st);
 }
 
-(int, int, int) get_nominator_data (cell nominators, int workchain, int address_hash, int reward_per_gram) {
+(int, int, int, int) get_nominator_data (cell nominators, int workchain, int address_hash, int reward_per_gram) {
   int key = workchain + address_hash;
   (slice nominator, int found) = nominators.udict_get?(256, key);
   if( ~ found) {
-    return (0, 0, reward_per_gram);
+    return (0, 0, reward_per_gram, 0);
   }
-  return (nominator~load_grams(), nominator~load_grams(), nominator~load_grams());
+  return (nominator~load_grams(), nominator~load_grams(), nominator~load_int(48), nominator~load_uint(32));
 }
 
 int make_pseudo_address(int wc, int addr_hash) inline {
@@ -78,12 +78,14 @@ int make_pseudo_address(int wc, int addr_hash) inline {
 
 (cell, ()) ~set_nominator_data (cell nominators,
                                 int workchain, int address_hash,
-                                int active, int locked, int paid_reward_per_gram) {
+                                int active, int locked, int paid_reward_per_gram,
+                                int last_stake_utime) {
   int key = make_pseudo_address(workchain, address_hash);
   if (active + locked > 0) {
     nominators~udict_set_builder(256, key, begin_cell().store_grams(active)
                                                    .store_grams(locked)
-                                                   .store_grams(paid_reward_per_gram));
+                                                   .store_int(paid_reward_per_gram, 48)
+                                                   .store_uint(last_stake_utime, 32));
   } else {
     nominators~udict_delete?(256,key);
   }

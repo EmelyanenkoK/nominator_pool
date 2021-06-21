@@ -38,7 +38,7 @@
       ;; Note validator profit is consist of two parts: 
       ;;  1) validation part proportional to validator_reward_share
       ;;  2) nomination part proportional to his stake
-      (int val_active, int val_locked, int val_paid_reward_per_gram) = 
+      (int val_active, int val_locked, int val_paid_reward_per_gram, int last_val_stake_utime) = 
          nominators.get_nominator_data(val_wc, val_hash, reward_per_gram);
       if( profit > 0 ) {
         int validator_profit = profit * validator_reward_share >> 16;
@@ -47,7 +47,7 @@
         val_active = val_active + validator_profit;
         total_active = total_active + validator_profit;
         ;; Note val_paid_reward_per_gram is not updated here since nomination part is not paid
-        nominators~set_nominator_data(val_wc, val_hash, val_active, val_locked, val_paid_reward_per_gram);
+        nominators~set_nominator_data(val_wc, val_hash, val_active, val_locked, val_paid_reward_per_gram, last_val_stake_utime);
         
         undistributed_reward = undistributed_reward + nominators_profit;
         reward_per_gram = reward_per_gram + nominators_profit * 1000000000 / total_active;
@@ -84,10 +84,10 @@
           reward_per_gram = reward_per_gram + profit * 1000000000 / total_active;
           undistributed_reward = undistributed_reward + profit;
         }
-        nominators~set_nominator_data(val_wc, val_hash, val_active, val_locked, reward_per_gram);
+        nominators~set_nominator_data(val_wc, val_hash, val_active, val_locked, reward_per_gram, last_val_stake_utime);
       }
 
     }
   }
-  save_data(validator, total_active, total_locked, reward_per_gram, validator_reward_share, undistributed_reward, nominators, _8, transfers);
+  save_data(validator, total_active, total_locked, reward_per_gram, undistributed_reward, validator_reward_share, nominators, _8, transfers);
 }

@@ -5,9 +5,9 @@
   return (total_active, total_locked, validator_reward_share, addr_hash);
 }
 
-(int, int) get_nominator(int workchain, int addr_hash) method_id {
+(int, int, int) get_nominator(int workchain, int addr_hash) method_id {
   var (_, _, _, reward_per_gram, _, _, nominators, _, _) = load_data();
-  (int active_amount, int locked_amount, int paid_reward_per_gram) = nominators.get_nominator_data(workchain, addr_hash, reward_per_gram);
+  (int active_amount, int locked_amount, int paid_reward_per_gram, int last_stake_utime) = nominators.get_nominator_data(workchain, addr_hash, reward_per_gram);
   int after_reward_amount = active_amount + active_amount * (reward_per_gram - paid_reward_per_gram) / 1000000000;
-  return (after_reward_amount, locked_amount);
+  return (after_reward_amount, locked_amount, last_stake_utime);
 }
