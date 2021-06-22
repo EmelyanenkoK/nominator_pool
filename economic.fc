@@ -26,8 +26,9 @@
                                   int reward_per_gram,
                                   int undistributed_reward,
                                   int validator_reward_share,
+                                  int _7,
                                   cell nominators,
-                                  cell _8,
+                                  cell _9,
                                   cell transfers,
                                   int msg_value) impure {
   if(msg_value > 0 ) {
@@ -89,5 +90,5 @@
 
     }
   }
-  save_data(validator, total_active, total_locked, reward_per_gram, undistributed_reward, validator_reward_share, nominators, _8, transfers);
+  save_data(validator, total_active, total_locked, reward_per_gram, undistributed_reward, validator_reward_share, _7, nominators, _9, transfers);
 }

@@ -5,14 +5,14 @@
   }
   int incoming_op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
-  (slice _1, int _2, int _3, int _4, int _5, int _6, cell _7, cell requests, cell _9) = load_data();
+  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10) = load_data();
   (cell request_cell, int found) = requests~udict_delete_get_ref?(64, query_id);
   throw_unless(201, found);
   slice request = request_cell.begin_parse();
   int stored_op = request~load_uint(32);
   (int time, int response_query_id, slice s_addr) = (request~load_uint(32),request~load_uint(64),request~load_msg_addr());
   int receipt_attachment = 10000000;
-  save_data(_1, _2, _3, _4, _5, _6, _7, requests, _9);
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10);
   if ( stored_op == 0x566f7465) {
     ;; 0xd6745240-1, 0xd6745240-2, 0xd6745240 + 2, 0xd6745240+6, 0xd6745240+5
     ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/config-code.fc#L521

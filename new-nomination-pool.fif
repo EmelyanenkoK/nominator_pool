@@ -6,9 +6,10 @@
 
 
 begin-options
-     "<validator-wallet-address> <validator-fee> [<pool-asm-file>] [<savefile>]" +cr +tab
+     "<validator-wallet-address> <validator-fee> <validator-cover> [<pool-asm-file>] [<savefile>]" +cr +tab
     +"Creates a query to deploy nominator pool authorized for validator requests from <validator-wallet-address>"  +cr +tab
     +"<validator-fee> from 0 to 1 controls how much rewards validator retains for itself"  +cr +tab
+    +"<validator-cover> from 0 to 1 controls required share of maximal fine coverable by validator balance"  +cr +tab
     +"code is assembled from <pool-asm-file> ('nominator-pool-code.fif' by default)"  +cr +tab
     +"and saves it into <savefile>-query.boc ('new-pool-query.boc' by default)"  +cr +tab
     +"The address file will be saved into <savefile>.addr ('new-pool.addr' by default)"
@@ -17,17 +18,22 @@ begin-options
     "Shows a help message" option-help
 parse-options
 
-$# dup 2 < swap 4 > or ' usage if
-4 :$1..n
+$# dup 3 < swap 5 > or ' usage if
+5 :$1..n
 
 $1 true parse-load-address drop 2=: dest_addr
 $2 (number) dup 0= abort"<validator-fee> must be a real number 0..1"
 1 = { 16 << } { 16 <</r } cond
 dup 0 < over 65536 > or abort"<validator-fee> must be a real number 0..1"
-=: validatorfee
+=: validator_fee
 
-$3 "nominator-pool-code.fif" replace-if-null =: codefile
-$4 "new-pool" replace-if-null =: savefile
+$3 (number) dup 0= abort"<validator-cover> must be a real number 0..1"
+1 = { 16 << } { 16 <</r } cond
+dup 0 < over 65536 > or abort"<validator-cover> must be a real number 0..1"
+=: validator_cover
+
+$4 "nominator-pool-code.fif" replace-if-null =: codefile
+$5 "new-pool" replace-if-null =: savefile
 
 now =: nonce
 <{
@@ -41,7 +47,8 @@ now =: nonce
    0 Gram,
    0 56 i,
    0 56 i,
-   validatorfee 16 u,
+   validator_fee 16 u,
+   validator_cover 16 u,
    dictnew dict,
    dictnew dict,
    dictnew dict,
