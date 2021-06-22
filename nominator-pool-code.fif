@@ -3,9 +3,10 @@
 PROGRAM{
   DECLPROC load_data
   DECLPROC save_data
-  DECLPROC get_nominator_data
   DECLPROC make_pseudo_address
+  DECLPROC get_nominator_data
   DECLPROC ~set_nominator_data
+  DECLPROC get_active_balance_by_address_slice
   DECLPROC ~register_request
   DECLPROC new_query_id
   DECLPROC send_message
@@ -16,6 +17,7 @@ PROGRAM{
   DECLPROC elector_address
   DECLPROC config_address
   DECLPROC stake_lock_durations
+  DECLPROC max_recommended_punishment_for_validator_misbehaviour
   DECLPROC ~collect_matured
   DECLPROC calc_nominator_profit_share
   DECLPROC update_reward_on_stake_return
@@ -76,10 +78,14 @@ PROGRAM{
     ENDC	//  st
     c4 POP
   }>
+  make_pseudo_address PROC:<{
+    //  wc addr_hash
+    ADD	//  _2
+  }>
   get_nominator_data PROC:<{
     //  nominators workchain address_hash reward_per_gram
     -ROT	//  nominators reward_per_gram workchain address_hash
-    ADD	//  nominators reward_per_gram key
+    make_pseudo_address INLINECALLDICT	//  nominators reward_per_gram key
     ROT
     8 PUSHPOW2	//  reward_per_gram key nominators _8=256
     DICTUGET
@@ -96,10 +102,6 @@ PROGRAM{
     48 LDI	//  _14 _16 _18 nominator
     32 LDU	//  _14 _16 _18 _33 _32
     DROP	//  _14 _16 _18 _21
-  }>
-  make_pseudo_address PROC:<{
-    //  wc addr_hash
-    ADD	//  _2
   }>
   ~set_nominator_data PROC:<{
     //  nominators workchain address_hash active locked paid_reward_per_gram last_stake_utime
@@ -129,6 +131,13 @@ PROGRAM{
       DROP	//  nominators
     }>
   }>
+  get_active_balance_by_address_slice PROC:<{
+    //  nominators addr
+    REWRITESTDADDR	//  nominators wc addr_hash
+    0 PUSHINT	//  nominators wc addr_hash _9=0
+    get_nominator_data CALLDICT	//  _13 _14 _15 _16
+    3 BLKDROP	//  active_balance
+  }>
   ~register_request PROC:<{
     //  requests query_id request_data
     s0 s2 XCHG
@@ -137,8 +146,11 @@ PROGRAM{
   }>
   new_query_id PROC:<{
     // 
-    RANDU256	//  _0
-    192 RSHIFT#	//  _4
+    NOW	//  _0
+    LTIME	//  _0 _1
+    32 PUSHPOW2	//  _0 _1 _2=4294967296
+    MOD	//  _0 _3
+    ADD	//  _4
   }>
   send_message PROCREF:<{
     //  addr grams body mode
@@ -276,6 +288,40 @@ PROGRAM{
     NIP	//  validators_elected_for stake_held_for set_params
     32 LDU	//  validators_elected_for stake_held_for _35 _34
     DROP	//  validators_elected_for stake_held_for utime_since
+  }>
+  max_recommended_punishment_for_validator_misbehaviour PROC:<{
+    //  stake
+    40 PUSHINT	//  stake _2=40
+    CONFIGOPTPARAM	//  stake _3
+    CTOS	//  stake recommendation
+    8 LDU	//  stake _57 _56
+    NIP	//  stake recommendation
+    LDGRAMS	//  stake _16 recommendation
+    32 LDU	//  stake _16 _18 recommendation
+    16 LDU	//  stake _16 _18 _21 recommendation
+    16 LDU	//  stake _16 _18 _21 _24 recommendation
+    16 LDU	//  stake _16 _18 _21 _24 _67 _66
+    NIP	//  stake _16 _18 _21 _24 recommendation
+    16 LDU	//  stake _16 _18 _21 _24 _30 recommendation
+    16 LDU	//  stake _16 _18 _21 _24 _30 _71 _70
+    DROP	//  stake flat_fine prop_fine severity_flat_mult severity_prop_mult long_flat_mult long_prop_mult
+    s5 s3 XCHG2	//  stake long_flat_mult prop_fine long_prop_mult severity_prop_mult flat_fine severity_flat_mult
+    MUL	//  stake long_flat_mult prop_fine long_prop_mult severity_prop_mult _37
+    8 RSHIFT#	//  stake long_flat_mult prop_fine long_prop_mult severity_prop_mult _39
+    s0 s4 XCHG2	//  stake severity_prop_mult prop_fine long_prop_mult _39 long_flat_mult
+    MUL	//  stake severity_prop_mult prop_fine long_prop_mult _40
+    8 RSHIFT#	//  stake severity_prop_mult prop_fine long_prop_mult suggested_fine
+    s2 s3 XCHG2	//  stake suggested_fine long_prop_mult prop_fine severity_prop_mult
+    MUL	//  stake suggested_fine long_prop_mult _44
+    8 RSHIFT#	//  stake suggested_fine long_prop_mult _46
+    SWAP	//  stake suggested_fine _46 long_prop_mult
+    MUL	//  stake suggested_fine _47
+    8 RSHIFT#	//  stake suggested_fine suggested_fine_part
+    s2 s(-1) PUXC
+    32 PUSHPOW2	//  stake suggested_fine stake suggested_fine_part _52
+    MULDIV	//  stake suggested_fine _53
+    ADD	//  stake _54
+    MIN	//  _55
   }>
   ~collect_matured PROC:<{
     //  transfers
@@ -639,7 +685,7 @@ PROGRAM{
     LDGRAMS	//  s_addr query_id storage amount in_msg
     DUP	//  s_addr query_id storage amount in_msg cs
     MYADDR	//  s_addr query_id storage amount in_msg cs _13
-    REWRITESTDADDR	//  s_addr query_id storage amount in_msg cs _117 _118
+    REWRITESTDADDR	//  s_addr query_id storage amount in_msg cs _122 _123
     NIP	//  s_addr query_id storage amount in_msg cs pool_addr
     SWAP	//  s_addr query_id storage amount in_msg pool_addr cs
     256 LDU	//  s_addr query_id storage amount in_msg pool_addr validator_pubkey cs
@@ -689,54 +735,60 @@ PROGRAM{
       send_receipt_message INLINECALLDICT
     }>	//  s_addr query_id storage amount in_msg
     s0 s2 XCHG	//  s_addr query_id in_msg amount storage
-    9 UNTUPLE	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers
-    s9 s7 PUSH2	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers amount total_active
-    LEQ	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _76
+    9 UNTUPLE	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers
+    s9 s7 PUSH2	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers amount total_active
+    LEQ	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers _76
     417 THROWIFNOT
+    s9 PUSH	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers amount
+    max_recommended_punishment_for_validator_misbehaviour CALLDICT	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers _79
+    s3 s9 PUSH2	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers _79 nominators validator
+    get_active_balance_by_address_slice CALLDICT	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers _79 _80
+    GREATER	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers _81
+    473 THROWIF
     s6 PUSH
-    0 PUSHINT	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers total_locked _78=0
+    0 PUSHINT	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers total_locked _83=0
     RAWRESERVE
-    1316189259 PUSHINT	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259
-    new_query_id CALLDICT	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id
-    elector_address CALLDICT	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _84
+    1316189259 PUSHINT	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259
+    new_query_id CALLDICT	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id
+    elector_address CALLDICT	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _89
     s2 PUSH
-    NEWC	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _84 op=1316189259 _85
-    32 STU	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _84 _87
-    s2 s(-1) PUXC	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _84 elector_query_id _87
-    64 STU	//  s_addr query_id in_msg amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _84 _89
-    s0 s14 XCHG2	//  s_addr query_id _84 amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _89 in_msg
-    STSLICER	//  s_addr query_id _84 amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _90
-    ENDC	//  s_addr query_id _84 amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 elector_query_id _91
+    NEWC	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _89 op=1316189259 _90
+    32 STU	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _89 _92
+    s2 s(-1) PUXC	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _89 elector_query_id _92
+    64 STU	//  s_addr query_id in_msg amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _89 _94
+    s0 s14 XCHG2	//  s_addr query_id _89 amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _94 in_msg
+    STSLICER	//  s_addr query_id _89 amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _95
+    ENDC	//  s_addr query_id _89 amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 elector_query_id _96
     s13 s12 s(-1) XCPUXC
-    1 PUSHINT	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 _84 amount _91 _92=1
+    1 PUSHINT	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 _89 amount _96 _97=1
     send_message INLINECALLDICT
-    NOW	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 _95
+    NOW	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 _100
     OVER
-    NEWC	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 _95 op=1316189259 _96
-    32 STU	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers op=1316189259 _95 _98
-    s2 POP	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _98 _95
-    s13 s1 PUXC	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _95 query_id _98
-    64 STU	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _95 _100
-    32 STU	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _102
-    s13 PUSH	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _102 s_addr
-    STSLICER	//  s_addr query_id elector_query_id amount _1 total_active total_locked _4 _5 _6 _7 requests transfers _103
-    s0 s10 XCHG2	//  s_addr query_id elector_query_id transfers _1 total_active total_locked _4 _5 _6 _7 requests _103 amount
-    STGRAMS	//  s_addr query_id elector_query_id transfers _1 total_active total_locked _4 _5 _6 _7 requests _104
-    ENDC	//  s_addr query_id elector_query_id transfers _1 total_active total_locked _4 _5 _6 _7 requests _105
-    s1 s10 s0 XCHG3	//  s_addr query_id _7 transfers _1 total_active total_locked _4 _5 _6 requests elector_query_id _105
-    ~register_request CALLDICT	//  s_addr query_id _7 transfers _1 total_active total_locked _4 _5 _6 requests
+    NEWC	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 _100 op=1316189259 _101
+    32 STU	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers op=1316189259 _100 _103
+    s2 POP	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers _103 _100
+    s13 s1 PUXC	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers _100 query_id _103
+    64 STU	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers _100 _105
+    32 STU	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers _107
+    s13 PUSH	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers _107 s_addr
+    STSLICER	//  s_addr query_id elector_query_id amount validator total_active total_locked _4 _5 _6 nominators requests transfers _108
+    s0 s10 XCHG2	//  s_addr query_id elector_query_id transfers validator total_active total_locked _4 _5 _6 nominators requests _108 amount
+    STGRAMS	//  s_addr query_id elector_query_id transfers validator total_active total_locked _4 _5 _6 nominators requests _109
+    ENDC	//  s_addr query_id elector_query_id transfers validator total_active total_locked _4 _5 _6 nominators requests _110
+    s1 s10 s0 XCHG3	//  s_addr query_id nominators transfers validator total_active total_locked _4 _5 _6 requests elector_query_id _110
+    ~register_request CALLDICT	//  s_addr query_id nominators transfers validator total_active total_locked _4 _5 _6 requests
     s6 s8 XCHG
     s5 s7 XCHG
     s4 s6 XCHG
     s3 s5 XCHG
-    s4 s0 s3 XCHG3	//  s_addr query_id _1 total_active total_locked _4 _5 _6 _7 requests transfers
+    s4 s0 s3 XCHG3	//  s_addr query_id validator total_active total_locked _4 _5 _6 nominators requests transfers
     save_data INLINECALLDICT
     10000000 PUSHINT	//  s_addr query_id receipt_attachment=10000000
-    1316193355 PUSHINT	//  s_addr query_id receipt_attachment=10000000 _111
+    1316193355 PUSHINT	//  s_addr query_id receipt_attachment=10000000 _116
     s0 s2 XCHG
     0 PUSHINT
     ROT
-    1 PUSHINT	//  s_addr _111 query_id _112=0 receipt_attachment=10000000 _113=1
+    1 PUSHINT	//  s_addr _116 query_id _117=0 receipt_attachment=10000000 _118=1
     send_receipt_message INLINECALLDICT
   }>
   recover_stake PROC:<{
@@ -1008,21 +1060,19 @@ PROGRAM{
     s0 s10 PUSH2	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram paid_reward_per_gram reward_per_gram
     NEQ	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram _22
     IF:<{	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram
-      s12 POP	//  s_addr msg_value query_id _1 paid_reward_per_gram _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
-      s9 s11 PUXC	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active reward_per_gram paid_reward_per_gram
-      SUB	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _24
-      OVER	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _24 active
-      MUL	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _25
-      1000000000 PUSHINT	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active _25 _26=1000000000
-      DIV	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active nominator_share
-      TUCK	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active nominator_share
-      ADD	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active
-      s0 s1 PUSH2	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active active nominator_share
-      ADD	//  s_addr msg_value query_id _1 locked _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share active total_active
-      s9 s2 XCHG2	//  s_addr msg_value query_id _1 locked _3 reward_per_gram active _6 nominators _8 _9 wc addr_hash total_active undistributed_reward nominator_share
-      SUB	//  s_addr msg_value query_id _1 locked _3 reward_per_gram active _6 nominators _8 _9 wc addr_hash total_active undistributed_reward
-      s8 s8 XCHG2
-      s0 s11 XCHG	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
+      s10 s(-1) PUXC	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked reward_per_gram paid_reward_per_gram
+      SUB	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _24
+      s2 PUSH	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _24 active
+      MUL	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _25
+      1000000000 PUSHINT	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _25 _26=1000000000
+      DIV	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked nominator_share
+      s2 s2 XCPU	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active nominator_share
+      ADD	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active
+      s12 s2 XCPU	//  s_addr msg_value query_id _1 active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked total_active nominator_share
+      ADD	//  s_addr msg_value query_id _1 active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked total_active
+      s9 s2 XCHG2	//  s_addr msg_value query_id _1 active _3 reward_per_gram locked _6 nominators _8 _9 wc addr_hash total_active undistributed_reward nominator_share
+      SUB	//  s_addr msg_value query_id _1 active _3 reward_per_gram locked _6 nominators _8 _9 wc addr_hash total_active undistributed_reward
+      s11 s8 XCHG2	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
     }>ELSE<{
       DROP	//  s_addr msg_value query_id _1 total_active _3 reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked
     }>
@@ -1138,21 +1188,19 @@ PROGRAM{
     s1 s11 PUSH2	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram last_stake_utime paid_reward_per_gram reward_per_gram
     NEQ	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram last_stake_utime _22
     IF:<{	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram last_stake_utime
-      s13 POP	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked paid_reward_per_gram
-      s10 s(-1) PUXC	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked reward_per_gram paid_reward_per_gram
-      SUB	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _24
-      s2 PUSH	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _24 active
-      MUL	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _25
-      1000000000 PUSHINT	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked _25 _26=1000000000
-      DIV	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked nominator_share
-      s2 s2 XCPU	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active nominator_share
-      ADD	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active
-      s0 s2 PUSH2	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active active nominator_share
-      ADD	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked active total_active
-      s10 s3 XCHG2	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram active _6 nominators _8 _9 wc addr_hash total_active locked undistributed_reward nominator_share
-      SUB	//  s_addr query_id _1 last_stake_utime total_locked reward_per_gram active _6 nominators _8 _9 wc addr_hash total_active locked undistributed_reward
-      s12 s1 s9 XCHG3
-      s0 s2 XCHG	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime
+      s11 s1 PUXC	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime reward_per_gram paid_reward_per_gram
+      SUB	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime _24
+      s3 PUSH	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime _24 active
+      MUL	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime _25
+      1000000000 PUSHINT	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime _25 _26=1000000000
+      DIV	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime nominator_share
+      s3 s3 XCPU	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked last_stake_utime active nominator_share
+      ADD	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked last_stake_utime active
+      s13 s3 XCPU	//  s_addr query_id _1 active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked last_stake_utime total_active nominator_share
+      ADD	//  s_addr query_id _1 active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash nominator_share locked last_stake_utime total_active
+      s10 s3 XCHG2	//  s_addr query_id _1 active total_locked reward_per_gram last_stake_utime _6 nominators _8 _9 wc addr_hash total_active locked undistributed_reward nominator_share
+      SUB	//  s_addr query_id _1 active total_locked reward_per_gram last_stake_utime _6 nominators _8 _9 wc addr_hash total_active locked undistributed_reward
+      s12 s1 s9 XCHG3	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime
     }>ELSE<{
       NIP	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active locked last_stake_utime
     }>	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 nominators _8 _9 wc addr_hash active amount last_stake_utime

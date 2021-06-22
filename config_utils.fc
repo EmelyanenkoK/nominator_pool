@@ -54,3 +54,20 @@
     int utime_since = set_params~load_uint(32);
     return (validators_elected_for, stake_held_for, utime_since);
 }
+
+(int) max_recommended_punishment_for_validator_misbehaviour(int stake) {
+    slice recommendation = config_param(40).begin_parse();
+    (int _1,
+     int flat_fine, int prop_fine,
+     int severity_flat_mult, int severity_prop_mult,
+     int _2,
+     int long_flat_mult, int long_prop_mult) =
+         ( recommendation~load_uint(8),
+           recommendation~load_grams(), recommendation~load_uint(32),
+           recommendation~load_uint(16), recommendation~load_uint(16),
+           recommendation~load_uint(16),
+           recommendation~load_uint(16), recommendation~load_uint(16));
+     int suggested_fine = (flat_fine * severity_flat_mult >> 8) * long_flat_mult >> 8;
+     int suggested_fine_part = (prop_fine * severity_prop_mult >> 8) * long_prop_mult >> 8;
+     return min(stake, suggested_fine + muldiv(stake, suggested_fine_part, 1 << 32)); ;; elector-code.fc:L529
+}

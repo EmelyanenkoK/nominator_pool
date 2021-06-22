@@ -13,7 +13,7 @@
   if(paid_reward_per_gram != reward_per_gram) {
     int nominator_share = (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
     active = active + nominator_share;
-    total_active = active + nominator_share;
+    total_active = total_active + nominator_share;
     undistributed_reward = undistributed_reward - nominator_share;
   }
   int put_fee = 200000000; ;; 0.2 Gram
@@ -82,7 +82,7 @@
   if(paid_reward_per_gram != reward_per_gram) {
     int nominator_share = (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
     active = active + nominator_share;
-    total_active = active + nominator_share;
+    total_active = total_active + nominator_share;
     undistributed_reward = undistributed_reward - nominator_share;
   }
   int amount = locked;

@@ -63,17 +63,17 @@
   set_data(st);
 }
 
+int make_pseudo_address(int wc, int addr_hash) inline {
+  return wc + addr_hash;
+}
+
 (int, int, int, int) get_nominator_data (cell nominators, int workchain, int address_hash, int reward_per_gram) {
-  int key = workchain + address_hash;
+  int key = make_pseudo_address(workchain, address_hash);
   (slice nominator, int found) = nominators.udict_get?(256, key);
   if( ~ found) {
     return (0, 0, reward_per_gram, 0);
   }
   return (nominator~load_grams(), nominator~load_grams(), nominator~load_int(48), nominator~load_uint(32));
-}
-
-int make_pseudo_address(int wc, int addr_hash) inline {
-  return wc + addr_hash;
 }
 
 (cell, ()) ~set_nominator_data (cell nominators,
@@ -92,6 +92,11 @@ int make_pseudo_address(int wc, int addr_hash) inline {
   return (nominators, ());
 }
 
+int get_active_balance_by_address_slice(cell nominators, slice addr) {
+  (int wc, int addr_hash) = parse_std_addr(addr);
+  (int active_balance, int _2, int _3, int _4) = nominators.get_nominator_data(wc, addr_hash, 0);
+  return active_balance;
+}
 
 (cell, ()) ~register_request(cell requests, int query_id, cell request_data) {
   return (requests.udict_set_ref(64, query_id, request_data), ());

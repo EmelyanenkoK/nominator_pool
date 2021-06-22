@@ -33,8 +33,11 @@
   }
   ;; All checks we can make locally
   
-  (slice _1, int total_active, int total_locked, int _4, int _5, int _6, cell _7, cell requests, cell transfers) = storage_untuple(storage);
+  (slice validator, int total_active, int total_locked, int _4, int _5, int _6, cell nominators, cell requests, cell transfers) = storage_untuple(storage);
   throw_unless(417, amount <= total_active);
+  throw_if(473, 
+               max_recommended_punishment_for_validator_misbehaviour(amount) > 
+               nominators.get_active_balance_by_address_slice(validator));
   raw_reserve(total_locked, 0);
   int op = 0x4e73744b; 
   int elector_query_id = new_query_id();
@@ -58,7 +61,7 @@
                             .end_cell());
   ;; Transfers will be written on response
   ;;throw_unless( 419, transfers~udict_add_builder?(32, now(), begin_cell().store_grams(amount)));
-  save_data(_1, total_active, total_locked, _4, _5, _6, _7, requests, transfers);
+  save_data(validator, total_active, total_locked, _4, _5, _6, nominators, requests, transfers);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
