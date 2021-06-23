@@ -88,3 +88,17 @@ builder store_grams_string(builder msg, int amount) {
 
   send_raw_message(msg.end_cell(), 64);
 }
+
+() send_text_withdrawal_not_ready_message(slice addr) impure {
+  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+  var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(addr)
+    .store_grams(0)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(0, 32)
+    .store_uint(824150868838491734735072179807152868346860070936417144702106238939065376, 240)  ;; "withdraw not ready: wait till "
+    .store_uint(2461921300960164965008949227431845016418741860, 152); ;; "next elector refund"
+
+  send_raw_message(msg.end_cell(), 64);
+}

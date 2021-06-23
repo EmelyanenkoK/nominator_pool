@@ -27,6 +27,7 @@ PROGRAM{
   DECLPROC send_text_stake_accept_message
   DECLPROC send_text_lock_accept_message
   DECLPROC send_text_withdraw_message
+  DECLPROC send_text_withdrawal_not_ready_message
   DECLPROC ensure_standart_fee
   DECLPROC send_new_stake
   DECLPROC recover_stake
@@ -675,6 +676,30 @@ PROGRAM{
     64 PUSHINT	//  _30 _31=64
     SENDRAWMSG
   }>
+  send_text_withdrawal_not_ready_message PROC:<{
+    //  addr
+    2461921300960164965008949227431845016418741860 PUSHINT	//  addr _2=2461921300960164965008949227431845016418741860
+    824150868838491734735072179807152868346860070936417144702106238939065376 PUSHINT	//  addr _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376
+    0 PUSHINT	//  addr _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0
+    DUP	//  addr _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _5=0
+    24 PUSHINT	//  addr _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _5=0 _6=24
+    NEWC	//  addr _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _5=0 _6=24 _7
+    6 STU	//  addr _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _5=0 _9
+    s0 s5 XCHG2	//  _5=0 _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _9 addr
+    STSLICER	//  _5=0 _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _10
+    OVER	//  _5=0 _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _10 _11=0
+    STGRAMS	//  _5=0 _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _4=0 _12
+    s1 s4 XCHG	//  _4=0 _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _5=0 _12
+    107 STU	//  _4=0 _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _26
+    s1 s3 XCHG	//  _3=824150868838491734735072179807152868346860070936417144702106238939065376 _2=2461921300960164965008949227431845016418741860 _4=0 _26
+    32 STU	//  _3=824150868838491734735072179807152868346860070936417144702106238939065376 _2=2461921300960164965008949227431845016418741860 _28
+    s1 s2 XCHG	//  _2=2461921300960164965008949227431845016418741860 _3=824150868838491734735072179807152868346860070936417144702106238939065376 _28
+    240 STU	//  _2=2461921300960164965008949227431845016418741860 _30
+    152 STU	//  msg
+    ENDC	//  _33
+    64 PUSHINT	//  _33 _34=64
+    SENDRAWMSG
+  }>
   ensure_standart_fee PROC:<{
     //  msg_value id
     DROP	//  msg_value
@@ -1206,14 +1231,33 @@ PROGRAM{
     s4 s1 s0 PUSH3
     s11 PUSH	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash nominators wc addr_hash reward_per_gram
     get_nominator_data CALLDICT	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime
+    BALANCE	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime _25
+    UNPAIR	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime _78 _79
+    DROP	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime pool_balance
+    s3 PUSH	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime pool_balance locked
+    LESS	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime _27
+    IFJMP:<{	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime
+      15 BLKDROP
+      DROP	//  s_addr query_id
+      DUP	//  s_addr query_id query_id
+      IFJMP:<{	//  s_addr query_id
+        4033776556 PUSHINT	//  s_addr query_id _30
+        0 PUSHINT	//  s_addr query_id _30 _31=0
+        s2 s0 s0 XC2PU
+        64 PUSHINT	//  s_addr _30 query_id _31=0 _32=0 _33=64
+        send_receipt_message INLINECALLDICT
+      }>	//  s_addr query_id
+      DROP	//  s_addr
+      send_text_withdrawal_not_ready_message CALLDICT
+    }>	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime
     s1 s12 PUSH2	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime paid_reward_per_gram reward_per_gram
-    NEQ	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime _23
+    NEQ	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime _36
     IF:<{	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked paid_reward_per_gram last_stake_utime
       s12 s1 PUXC	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime reward_per_gram paid_reward_per_gram
-      SUB	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _25
-      s3 PUSH	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _25 active
-      MUL	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _26
-      1000000000 PUSHINT	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _26 _27=1000000000
+      SUB	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _38
+      s3 PUSH	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _38 active
+      MUL	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _39
+      1000000000 PUSHINT	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime _39 _40=1000000000
       DIV	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active locked last_stake_utime nominator_share
       s3 s3 XCPU	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash nominator_share locked last_stake_utime active nominator_share
       ADD	//  s_addr query_id _1 total_active total_locked reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash nominator_share locked last_stake_utime active
@@ -1229,7 +1273,7 @@ PROGRAM{
     s13 s2 XCPU	//  s_addr query_id _1 total_active locked=0 reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active amount last_stake_utime total_locked amount
     SUB	//  s_addr query_id _1 total_active locked=0 reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active amount last_stake_utime total_locked
     DUP	//  s_addr query_id _1 total_active locked=0 reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active amount last_stake_utime total_locked total_locked
-    -1 GTINT	//  s_addr query_id _1 total_active locked=0 reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active amount last_stake_utime total_locked _37
+    -1 GTINT	//  s_addr query_id _1 total_active locked=0 reward_per_gram undistributed_reward _6 _7 nominators _9 _10 wc addr_hash active amount last_stake_utime total_locked _50
     398 THROWIFNOT
     s5 s8 XCHG
     s4 s8 XCHG
@@ -1248,11 +1292,11 @@ PROGRAM{
     save_data INLINECALLDICT
     OVER	//  s_addr query_id amount query_id
     IFJMP:<{	//  s_addr query_id amount
-      7244716 PUSHINT	//  s_addr query_id amount _44
+      7244716 PUSHINT	//  s_addr query_id amount _57
       s0 s2 XCHG
       0 PUSHINT
       ROT
-      64 PUSHINT	//  s_addr _44 query_id _45=0 amount _46=64
+      64 PUSHINT	//  s_addr _57 query_id _58=0 amount _59=64
       send_receipt_message INLINECALLDICT
     }>	//  s_addr query_id amount
     NIP	//  s_addr amount

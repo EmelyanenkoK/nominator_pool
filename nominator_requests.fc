@@ -79,23 +79,33 @@
    cell _9, cell _10) = storage_untuple(storage);
   (int wc, int addr_hash)  = parse_std_addr(s_addr);
   (int active, int locked, int paid_reward_per_gram, int last_stake_utime) = nominators.get_nominator_data(wc, addr_hash, reward_per_gram);
-  ;; distribute profit to nominator
-  if(paid_reward_per_gram != reward_per_gram) {
-    int nominator_share = (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
-    active = active + nominator_share;
-    total_active = total_active + nominator_share;
-    undistributed_reward = undistributed_reward - nominator_share;
-  }
-  int amount = locked;
-  locked = 0;
-  total_locked = total_locked - amount;
-  throw_unless (398, total_locked >= 0); ;; This check here to get error code, negative locked will throw anyway during serialization
-  nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram, last_stake_utime);
-  save_data(_1, total_active, total_locked, reward_per_gram, undistributed_reward, _6, _7, nominators, _9, _10);
-  if ( query_id ) {
-    return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 64);
+  [int pool_balance, cell cur_col] = get_balance(); 
+  if(pool_balance < locked) {
+    ;; we need to wait till refund from the pool
+    if ( query_id ) {
+      return send_receipt_message(s_addr, 0x006e7bac + 0xf0001000, query_id, 0, 0, 64);
+    } else {
+      return send_text_withdrawal_not_ready_message(s_addr);
+    }
   } else {
-    return send_text_withdraw_message(s_addr, amount);
+    ;; distribute profit to nominator
+    if(paid_reward_per_gram != reward_per_gram) {
+      int nominator_share = (reward_per_gram - paid_reward_per_gram) * active / 1000000000;
+      active = active + nominator_share;
+      total_active = total_active + nominator_share;
+      undistributed_reward = undistributed_reward - nominator_share;
+    }
+    int amount = locked;
+    locked = 0;
+    total_locked = total_locked - amount;
+    throw_unless (398, total_locked >= 0); ;; This check here to get error code, negative locked will throw anyway during serialization
+    nominators~set_nominator_data(wc, addr_hash, active, locked, reward_per_gram, last_stake_utime);
+    save_data(_1, total_active, total_locked, reward_per_gram, undistributed_reward, _6, _7, nominators, _9, _10);
+    if ( query_id ) {
+      return send_receipt_message(s_addr, 0x006e7bac + 0x00001000, query_id, 0, amount, 64);
+    } else {
+      return send_text_withdraw_message(s_addr, amount);
+    }
   }
 }
 
