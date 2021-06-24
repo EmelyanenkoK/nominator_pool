@@ -4,10 +4,7 @@
   int threshold = prev_set_utime_since + stake_held_for;
   do {
     var (transfers', i, transfer, f) = transfers.udict_delete_get_min(32);
-    f~touch();
-    if (f) {
-      f = (i < threshold);
-    }
+    f = f & (i < threshold);
     if (f) {
       matured = matured + transfer~load_grams();
       transfers = transfers';
