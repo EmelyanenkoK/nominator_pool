@@ -1,8 +1,9 @@
 () ensure_standart_fee(int msg_value, int id) inline {
+  int proxy_fee =   1000000000;
   int elector_fee = 1000000000;
   int our_processing_fee = 50000000;
   int receipt_attachment = 10000000;
-  throw_unless(312, msg_value >= 1000000000 + 50000000 + 2 * 10000000);
+  throw_unless(312 + id, msg_value >= 1000000000 + 50000000 + 2 * 10000000);
 }
 
 () send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
@@ -40,7 +41,8 @@
    int validator_cover_ability,
    cell nominators, 
    cell requests, 
-   cell transfers) = storage_untuple(storage);
+   cell transfers,
+   cell proxies) = storage_untuple(storage);
   throw_unless(417, amount <= total_active);
   throw_if(473, 
                max_recommended_punishment_for_validator_misbehaviour(amount) * validator_cover_ability >> 16
@@ -69,7 +71,7 @@
                             .end_cell());
   ;; Transfers will be written on response
   ;;throw_unless( 419, transfers~udict_add_builder?(32, now(), begin_cell().store_grams(amount)));
-  save_data(validator, total_active, total_locked, _4, _5, _6, validator_cover_ability, nominators, requests, transfers);
+  save_data(validator, total_active, total_locked, _4, _5, _6, validator_cover_ability, nominators, requests, transfers, proxies);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
@@ -86,7 +88,7 @@
                .end_cell(),
                1 ;; pay fees separately but fail on errors
                );
-  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10) = storage_untuple(storage);
+  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell proxies) = storage_untuple(storage);
   requests~register_request(elector_query_id,
                             begin_cell()
                                         .store_uint(op,32)
@@ -94,7 +96,7 @@
                                         .store_uint(now(), 32)
                                         .store_slice(s_addr)
                             .end_cell());
-  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10);
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10, proxies);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
@@ -116,7 +118,7 @@
   var (val_pubkey, weight) = unpack_validator_descr(vdescr);
   throw_unless(34, check_data_signature(msg_body, signature, val_pubkey));
   ;; send 'vote'
-  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10) = storage_untuple(storage);
+  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell _11) = storage_untuple(storage);
   send_message(elector_address(),
                1000000000,
                begin_cell()
@@ -133,7 +135,7 @@
                                         .store_uint(now(), 32)
                                         .store_slice(s_addr)
                             .end_cell());
-  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10);
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10, _11);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
@@ -152,7 +154,7 @@
                .end_cell(),
                1 ;; pay fees separately but fail on errors
                );
-  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10) = storage_untuple(storage);
+  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell _11) = storage_untuple(storage);
   requests~register_request(config_query_id,
                             begin_cell()
                                         .store_uint(op,32)
@@ -160,7 +162,7 @@
                                         .store_uint(now(), 32)
                                         .store_slice(s_addr)
                             .end_cell());
-  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10);
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10, _11);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
@@ -172,7 +174,7 @@
    int total_active, int total_locked,
    int _4,
    int undistributed_reward,
-   int _6, int _7, cell _8, cell _9, cell _10) = storage_untuple(storage);
+   int _6, int _7, cell _8, cell _9, cell _10, cell _11) = storage_untuple(storage);
   int amount = in_msg~load_grams();
   int op = 0x006e7bac;
   raw_reserve(total_active + total_locked + undistributed_reward, 0);

@@ -1,13 +1,13 @@
 (int, int, int, int, int, int) get_pool_data() method_id {
   var (validator_address, total_active, total_locked,
-       _, _, validator_reward_share, validator_cover_ability,  nominators, _, _) = load_data();
+       _, _, validator_reward_share, validator_cover_ability,  nominators, _, _, _) = load_data();
   (int wc, int addr_hash) = validator_address.parse_std_addr();
   int validator_balance = nominators.get_active_balance_by_address_slice(validator_address);  
   return (total_active, total_locked, validator_balance, validator_reward_share, validator_cover_ability, addr_hash);
 }
 
 (int, int, int) get_nominator(int workchain, int addr_hash) method_id {
-  var (_, _, _, reward_per_gram, _, _, _, nominators, _, _) = load_data();
+  var (_, _, _, reward_per_gram, _, _, _, nominators, _, _, _) = load_data();
   (int active_amount, int locked_amount, int paid_reward_per_gram, int last_stake_utime) = nominators.get_nominator_data(workchain, addr_hash, reward_per_gram);
   int after_reward_amount = active_amount + active_amount * (reward_per_gram - paid_reward_per_gram) / 1000000000;
   return (after_reward_amount, locked_amount, last_stake_utime);

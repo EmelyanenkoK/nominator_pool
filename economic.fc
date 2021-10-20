@@ -27,6 +27,7 @@
                                   cell nominators,
                                   cell _9,
                                   cell transfers,
+                                  cell proxies,
                                   int msg_value) impure {
   if(msg_value > 0 ) {
     int matured = transfers~collect_matured();
@@ -87,5 +88,5 @@
 
     }
   }
-  save_data(validator, total_active, total_locked, reward_per_gram, undistributed_reward, validator_reward_share, _7, nominators, _9, transfers);
+  save_data(validator, total_active, total_locked, reward_per_gram, undistributed_reward, validator_reward_share, _7, nominators, _9, transfers, proxies);
 }
