@@ -1,0 +1,17 @@
+
+(cell, ()) ~send_message_through_unused(cell proxies, slice addr, int grams, cell body) impure {
+    return (proxies,());
+}
+
+(cell, ()) ~send_message_through_matured(cell proxies, slice addr, int grams, cell body) impure {
+    return (proxies,());
+}
+() send_through_any_proxy(cell proxies, slice addr, int grams, cell body) impure {
+}
+(cell, ()) ~occupy_proxy(cell proxies, slice used_proxy) {
+  return (proxies, ());
+
+}
+(cell, ()) ~release_proxy(cell proxies, slice used_proxy) {
+  return (proxies, ());
+}
