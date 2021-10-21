@@ -52,15 +52,15 @@
   int op = 0x4e73744b; 
   int elector_query_id = new_query_id();
 
-  send_message(elector_address(),
+  ;; sends message through unused proxy
+  proxies~send_message_through_unused(
+               elector_address(),
                amount,
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
                            .store_slice(in_msg)
-               .end_cell(),
-               1 ;; pay fees separately but fail on errors
-               );
+               .end_cell() );
   requests~register_request(elector_query_id, 
                             begin_cell()
                                         .store_uint(op,32)
@@ -80,15 +80,15 @@
   ensure_standart_fee(msg_value, 20000);
   int elector_query_id = new_query_id();
   int op = 0x47657424;
-  send_message(elector_address(),
+  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell proxies) = storage_untuple(storage);
+
+  proxies~send_message_through_matured(elector_address(),
                1000000000,
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
-               .end_cell(),
-               1 ;; pay fees separately but fail on errors
+               .end_cell()
                );
-  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell proxies) = storage_untuple(storage);
   requests~register_request(elector_query_id,
                             begin_cell()
                                         .store_uint(op,32)
@@ -118,15 +118,14 @@
   var (val_pubkey, weight) = unpack_validator_descr(vdescr);
   throw_unless(34, check_data_signature(msg_body, signature, val_pubkey));
   ;; send 'vote'
-  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell _11) = storage_untuple(storage);
-  send_message(elector_address(),
+  (slice _1, int _2, int _3, int _4, int _5, int _6, int _7, cell _8, cell requests, cell _10, cell proxies) = storage_untuple(storage);
+  proxies.send_through_any_proxy(elector_address(),
                1000000000,
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
                            .store_slice(vote)
-               .end_cell(),
-               1 ;; pay fees separately but fail on errors
+               .end_cell()
                );
   requests~register_request(elector_query_id,
                             begin_cell()
@@ -135,7 +134,7 @@
                                         .store_uint(now(), 32)
                                         .store_slice(s_addr)
                             .end_cell());
-  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10, _11);
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10, proxies);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }

@@ -30,16 +30,12 @@
   }
 
   cell proxies = storage.at(10);
-  if (s_addr.slice_bits() == 267) {
-    ;; dict search isn't exception safe if used with wrong slice length
-    (slice is_busy, int found?) = proxies.dict_get?(267, s_addr);
-    if(found?) {
+  if (proxies.is_proxy(s_addr)) {
       processed? = -1;
       (int flags, slice sender) = (in_msg~load_uint(4), in_msg~load_msg_addr());
       if ( equal_slices(sender, elector_address()) ) {
-        process_elector_response(flags, in_msg, msg_value);
+        process_elector_response(flags, in_msg, msg_value, s_addr);
       }
-    }
   }
 
   if( ~ processed?)  {

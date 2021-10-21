@@ -15,6 +15,11 @@
 ;; transfers#_ recent_outgoing:(HashmapE Timestamp Grams) = RecentTransfers;
 ;;
 ;;
+;; proxy#_ addr:MsgAddressInt last_used_lt:uint64 = Proxy;
+;; NoProxy#_ = Proxies;
+;; OneProxy#_ first:Proxy = Proxies;
+;; TwoProxies#_ first:Proxy second:Proxy = Proxies;
+;;
 ;; storage#_ 
 ;;           validator:MsgAddressInt
 ;;           total_active:Grams 
@@ -26,7 +31,7 @@
 ;;           nominators: Nominators
 ;;           requests: Requests;
 ;;           transfers: (HashmapE Timestamp Grams);
-;;           proxies: (HashmapE MsgAddressInt Bool);
+;;           proxies: ^Proxies;
 
 (slice, int, int, int, int, int, int, cell, cell, cell, cell) load_data () inline {
   var ds = get_data().begin_parse();

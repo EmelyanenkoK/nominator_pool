@@ -1,4 +1,4 @@
-() process_elector_response (int flags, slice in_msg, int msg_value) impure {
+() process_elector_response (int flags, slice in_msg, int msg_value, slice used_proxy) impure {
   if( flags & 1) {
     ;; Should we process bounced (that is errors) responses somehow?
     return (); 
@@ -18,7 +18,8 @@
     ;; If stake returns  correctly op = 0xf96f7324, else 0xfffffffe
     ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L403-426
     if(incoming_op == 0xf96f7324) {
-      update_reward_on_stake_return(_1, _2, _3, _4, _5, _6, _7, nominators, requests, transfers, proxies, msg_value);
+      ;; also unoccupy proxy
+      update_reward_on_stake_return(_1, _2, _3, _4, _5, _6, _7, nominators, requests, transfers, proxies, msg_value, used_proxy);
       ;; notify sender about success
       return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
     }
@@ -36,6 +37,7 @@
     if(incoming_op == 0xf374484c) {
       int amount = request~load_grams();
       transfers~udict_add_builder?(32, now(), begin_cell().store_grams(amount));
+      proxies~occupy_proxy(used_proxy);
       save_data(_1, _2, _3, _4, _5, _6, _7, nominators, requests, transfers, proxies);
       return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
     }

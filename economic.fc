@@ -28,9 +28,11 @@
                                   cell _9,
                                   cell transfers,
                                   cell proxies,
-                                  int msg_value) impure {
+                                  int msg_value,
+                                  slice used_proxy) impure {
   if(msg_value > 0 ) {
     int matured = transfers~collect_matured();
+    proxies~release_proxy(used_proxy);
     if (total_active > 0) {
       int profit  = msg_value - matured;
       (int val_wc, int val_hash) = parse_std_addr(validator);
