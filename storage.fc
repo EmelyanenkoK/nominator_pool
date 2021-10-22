@@ -15,7 +15,7 @@
 ;; transfers#_ recent_outgoing:(HashmapE Timestamp Grams) = RecentTransfers;
 ;;
 ;;
-;; proxy#_ addr:MsgAddressInt last_used_lt:uint64 = Proxy;
+;; proxy#_ addr:MsgAddressInt occupation_time:uint32 = Proxy;
 ;; NoProxy#_ = Proxies;
 ;; OneProxy#_ first:Proxy = Proxies;
 ;; TwoProxies#_ first:Proxy second:Proxy = Proxies;

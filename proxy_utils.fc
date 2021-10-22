@@ -1,17 +1,136 @@
+builder deploy_new_proxy() impure {
+  slice me = my_address();
+  cell code = load_proxy_code();
+  cell data = begin_cell().store_uint(cur_lt(), 64).store_slice(me).end_cell();
+  cell state_init = begin_cell().store_uint(0x3,4) ;; Maybe split_depth, Maybe special, Maybe code, Maybe data
+                    .store_ref(code).store_ref(data).end_cell();
+  int addr_hash = cell_hash(state_init);
+  
+  builder addr = begin_cell().store_uint(0x4ff, 2 + 1 + 8) ;; addr_std$10 anycast:(Maybe Anycast)  workchain_id: -1
+                            .store_uint(addr_hash, 256 );
+  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+  var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_builder(addr)
+    .store_grams(1000000000)
+    .store_uint(4 + 2 + 0, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+    .store_ref(state_init);
+  send_raw_message(msg.end_cell(), 1);
+  return addr;
+}
 
+(cell, ()) send_message_through_new(cell proxies, slice addr, int grams, cell body) impure {
+      builder proxy = deploy_new_proxy();
+      ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+      var msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_builder(proxy)
+                .store_grams(grams)
+                .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_slice(addr)
+                .store_ref(body);
+      send_raw_message(msg.end_cell(), 1);
+      return (begin_cell().store_builder(proxy).store_uint(now(),32).end_cell(),());
+}
+
+(cell, ()) ~send_message_through_filtered(cell proxies, slice addr, int grams, cell body, (int)->(int) filter) impure {
+    slice cs = proxies.begin_parse();
+    slice proxy = cs; ;; it is dummy initialisation which will be overwritten
+    int len = cs.slice_bits();
+    int need_new_proxy = 0;
+    if(~ len) {
+      need_new_proxy = -1;
+    } elseif( len == 267 + 32) {
+      slice proxy = cs~load_bits(267);
+      int occupation_time = cs~load_uint(32);
+      if (~ filter(occupation_time)) {
+        need_new_proxy = -1;
+      }
+    } else {
+      slice proxy1 = cs~load_bits(267);
+      int occupation_time1 = cs~load_uint(32);
+      slice proxy2 = cs~load_bits(267);
+      int occupation_time2 = cs~load_uint(32);
+      throw_unless(779, filter(occupation_time1) | filter(occupation_time2));
+      slice proxy = filter(occupation_time1) ? proxy1 : proxy2;
+    }
+    if(need_new_proxy) {
+      return send_message_through_new(proxies, addr, grams, body);
+    } else {
+      var msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(proxy)
+                .store_grams(grams)
+                .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_slice(addr)
+                .store_ref(body);
+       send_raw_message(msg.end_cell(), 1);
+     return (proxies,());
+    }
+}
+
+int is_unused(int occupation_time) inline {
+  return ~ occupation_time;
+}
 (cell, ()) ~send_message_through_unused(cell proxies, slice addr, int grams, cell body) impure {
-    return (proxies,());
+  return ~send_message_through_filtered(proxies, addr, grams, body, is_unused);
+}
+
+int is_matured(int occupation_time) inline {
+  slice cfg = config_param(15).begin_parse();
+  int validators_elected_for = cfg~load_uint(32);
+  cfg~skip_bits(64);
+  int stake_held_for = cfg~load_uint(32);
+  return now() > (occupation_time + validators_elected_for + stake_held_for);
 }
 
 (cell, ()) ~send_message_through_matured(cell proxies, slice addr, int grams, cell body) impure {
-    return (proxies,());
+    return ~send_message_through_filtered(proxies, addr, grams, body, is_matured);
 }
+
+(int) always_true(int) {
+  return -1;
+}
+
 () send_through_any_proxy(cell proxies, slice addr, int grams, cell body) impure {
+    ~send_message_through_filtered(proxies, addr, grams, body, always_true);
+    return();
 }
+
+(cell, ()) ~update_proxy(cell proxies, slice used_proxy, int new_state) {
+  slice cs = proxies.begin_parse();
+  builder new_pr = begin_cell();
+  int found? = 0;
+  while( (~ found?) & cs.slice_bits()) {
+    slice pr = cs~load_bits(267);
+    new_pr = new_pr.store_slice(pr);
+    if(equal_slices(pr, used_proxy)) {
+      new_pr = new_pr.store_uint(new_state,32);
+    } else {
+      new_pr = new_pr.store_slice(cs~load_bits(32));
+    }
+  }
+  return (new_pr.end_cell(),());
+}
+
+
 (cell, ()) ~occupy_proxy(cell proxies, slice used_proxy) {
-  return (proxies, ());
+  return ~update_proxy(proxies, used_proxy, now());
 
 }
 (cell, ()) ~release_proxy(cell proxies, slice used_proxy) {
-  return (proxies, ());
+  return ~update_proxy(proxies, used_proxy, 0);
+}
+
+int is_proxy(cell proxies, slice sender) {
+  slice cs = proxies.begin_parse();
+  int found? = 0;
+  while( (~ found?) & cs.slice_bits()) {
+    slice pr = cs~load_bits(267);
+    if(equal_slices(pr, sender)) {
+      found? = -1;
+    }
+    cs~skip_bits(32);
+  }
+  return found?;
 }

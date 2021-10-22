@@ -4,14 +4,17 @@
   slice s_addr = cs~load_msg_addr();
   slice master_address = get_data().begin_parse().skip_bits(64);
   if(equal_slices(master_address, s_addr)) {
-    slice destination = payload~load_msg_addr();
-    builder msg = begin_cell()
-      .store_uint(0x18, 6)
-      .store_slice(destination)
-      .store_grams(0)
-      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-      .store_slice(payload);
-    send_raw_message(msg.end_cell(), 64);
+    if(payload.slice_bits()) {
+      slice destination = payload~load_msg_addr();
+      cell proxied_payload = payload~load_ref();
+      builder msg = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(destination)
+        .store_grams(0)
+        .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .store_ref(proxied_payload);
+      send_raw_message(msg.end_cell(), 64);
+    }
   }
   else {
     raw_reserve(1000000000, 2);
@@ -21,6 +24,7 @@
       .store_grams(0)
       .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
       .store_slice(s_addr) ;; TODO potentially too much data for cell
+                           ;; however in all elector response it should be enough
       .store_uint(flags, 4)
       .store_slice(payload);
     send_raw_message(msg.end_cell(), 128);
