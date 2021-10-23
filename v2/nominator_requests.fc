@@ -1,7 +1,7 @@
 () add_stake (slice s_addr, int msg_value, tuple storage, int query_id, int is_validator?) impure {
   (slice _1, slice _2, 
    int val_balance, int nom_balance,
-   int _5, int _6, int _7, int _8, int _9, cell _10, cell _11) = storage_untuple(storage);
+   int _5, int _6, int _7, int _8, int _9, int _10, slice _11) = storage_untuple(storage);
   int put_fee = 200000000; ;; 0.2 Coin
   int stake = msg_value - put_fee;
   if (is_validator?) {
@@ -9,7 +9,7 @@
   } else {
     nom_balance += stake;
   }
-  save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10, _11);
+  save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10, slice_to_builder(_11));
   if ( query_id ) {
     return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
   } else {
@@ -22,7 +22,7 @@
   (slice _1, slice _2,
    int val_balance, int nom_balance,
    int val_request, int nom_request,
-   int _7, int _8, int _9, cell _10, cell _11) = storage_untuple(storage);
+   int _7, int _8, int _9, int _10, slice _11) = storage_untuple(storage);
   if (is_validator?) {
     if ( (amount == 0 ) | ( val_request + amount > val_balance)) {
       val_request = val_balance;
@@ -37,7 +37,7 @@
     }
 
   }
-  save_data(_1, _2, val_balance, nom_balance, val_request, nom_request, _7, _8, _9, _10, _11);
+  save_data(_1, _2, val_balance, nom_balance, val_request, nom_request, _7, _8, _9, _10, slice_to_builder(_11));
   if(query_id) {
     return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 0, 64);
   } else {

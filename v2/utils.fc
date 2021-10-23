@@ -1,3 +1,6 @@
 (int) new_query_id () {
     return now() + mod(cur_lt(), 4294967296);
 }
+builder slice_to_builder(slice s) {
+    return begin_cell().store_slice(s);
+}

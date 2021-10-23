@@ -1,17 +1,3 @@
-(cell, (int)) ~collect_matured(cell transfers) inline {
-  (int validators_elected_for, int stake_held_for, int prev_set_utime_since) = stake_lock_durations();
-  int matured = 0;
-  int threshold = prev_set_utime_since + stake_held_for;
-  do {
-    var (transfers', i, transfer, f) = transfers.udict_delete_get_min(32);
-    f = f & (i < threshold);
-    if (f) {
-      matured = matured + transfer~load_grams();
-      transfers = transfers';
-    }
-  } until (~ f);
-  return (transfers, (matured));
-}
 
 () notify_nominator (slice addr, int amount, int value) impure {
     return send_message( addr, amount,
@@ -39,11 +25,13 @@
 () update_reward_on_stake_return(slice validator, slice nominator,
                                  int val_balance, int nom_balance,
                                  int val_request, int nom_request,
-                                 int validator_reward_share, int validator_cover_ability, int _9, 
-                                 cell requests, cell transfers,
+                                 int validator_reward_share, int validator_cover_ability, int _9,
+                                 int stake_on_elector,
+                                 builder req,
                                  int  msg_value) impure {
 
-    int matured = transfers~collect_matured();
+    int matured = stake_on_elector;
+    stake_on_elector = 0;
     int notification_fee = 200000000; ;; 0.2 TON
     int profit  = msg_value - matured - notification_fee;
     int nominator_profit = 0;
@@ -70,5 +58,6 @@
       notify_nominator(nominator, nominator_profit, notification_fee * 4 / 5);
     }
     (val_request, nom_request)~consider_withdrawal_requests(validator, nominator, val_balance, nom_balance);
+    save_data(validator, nominator,val_balance,nom_balance,val_request,nom_request,validator_reward_share,validator_cover_ability,_9, stake_on_elector, req);
     return ();
 }

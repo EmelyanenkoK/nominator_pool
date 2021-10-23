@@ -12,39 +12,34 @@
 ;; timestamp#_ time:uint32: Timestamp;
 ;; transfers#_ recent_outgoing:(HashmapE Timestamp Grams) = RecentTransfers;
 ;;
-;;
-;;
-;; Note: Toncoin amount is practically bounded by 5 billions
-;; that give serialization of the Toncoin amounts 10 bytes max
-;; thus data always fit root cell
-;; 267*2 + 10*8*4 + 16*2 + 2
+;; participant_data#_ address:MsgAddressInt balance:Grams requested_amount:Grams = Participant;
+;; empty_query#0 = Query;
+;; query#1 op:uint32 time:uint32 response_id:uint64 s_addr:MsgAddressInt = Query;
 ;; storage#_ 
-;;           validator:MsgAddressInt(addr_std)
-;;           nominator:MsgAddressInt(addr_std)
-;;           validator_balance:Grams
-;;           nominator_balance:Grams
-;;           validator_requested_withdrawal:Grams
-;;           nominator_requested_withdrawal:Grams
+;;           validator:^Participant
+;;           nominator:^Participant
 ;;           validator_reward_share:uint16
 ;;           validator_cover_ability:uint16
 ;;           last_stake_sent:uint32
-;;           requests: Requests;
-;;           transfers: (HashmapE Timestamp Grams);
+;;           stake_on_elector:Grams
+;;           on_fly_query: Query;
 
-(slice, slice, int, int, int, int, int, int, int, cell, cell) load_data () inline {
+(slice, slice, int, int, int, int, int, int, int, int, slice) load_data () inline {
   var ds = get_data().begin_parse();
+  slice v_participant = ds~load_ref().begin_parse();
+  slice n_participant = ds~load_ref().begin_parse();
   return (
-          ds~load_msg_addr(),
-          ds~load_msg_addr(),
-          ds~load_grams(),
-          ds~load_grams(),
-          ds~load_grams(),
-          ds~load_grams(),
+          v_participant~load_msg_addr(),
+          n_participant~load_msg_addr(),
+          v_participant~load_grams(),
+          n_participant~load_grams(),
+          v_participant~load_grams(),
+          n_participant~load_grams(),
           ds~load_uint(16),
           ds~load_uint(16),
           ds~load_uint(32),
-          ds~load_dict(),
-          ds~load_dict()
+          ds~load_grams(),
+          ds
           );
 }
 
@@ -58,23 +53,39 @@
               int validator_reward_share,
               int validator_cover_ability,
               int last_stake_sent,
-              cell requests,
-              cell transfers) impure inline {
-  var st = begin_cell().store_slice(validator)
-                       .store_slice(nominator)
-                       .store_grams(validator_balance)
-                       .store_grams(nominator_balance)
-                       .store_grams(validator_requested_withdrawal)
-                       .store_grams(nominator_requested_withdrawal)
+              int stake_on_elector,
+              builder on_fly_query) impure inline {
+  cell v_participant = begin_cell().store_slice(validator)
+                                   .store_grams(validator_balance)
+                                   .store_grams(validator_requested_withdrawal)
+                       .end_cell();
+  cell n_participant = begin_cell().store_slice(nominator)
+                                   .store_grams(nominator_balance)
+                                   .store_grams(nominator_requested_withdrawal)
+                       .end_cell();
+  var st = begin_cell().store_ref(v_participant)
+                       .store_ref(n_participant)
                        .store_uint(validator_reward_share, 16)
                        .store_uint(validator_cover_ability, 16)
                        .store_uint(last_stake_sent, 32)
-                       .store_dict(requests)
-                       .store_dict(transfers)
+                       .store_grams(stake_on_elector)
+                       .store_builder(on_fly_query)
             .end_cell();
   set_data(st);
 }
 
-(cell, ()) ~register_request(cell requests, int query_id, cell request_data) {
-  return (requests.udict_set_ref(64, query_id, request_data), ());
+(int, int, int, slice) deserialize_query (slice query) {
+  if(query~load_int(1)) {
+    return (query~load_uint(32), query~load_uint(32), query~load_uint(64), query);
+  } else {
+    return (0, 0, 0, null());
+  }
+}
+
+builder empty_query() inline {
+  return begin_cell().store_int(0, 1);
+}
+builder serialize_query(int op, int time, int query_id, slice address) inline {
+   return begin_cell().store_int(-1, 1).store_uint(op, 32).store_uint(time, 32)
+                      .store_uint(query_id, 64).store_slice(address);
 }
