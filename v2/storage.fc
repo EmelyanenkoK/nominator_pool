@@ -54,7 +54,7 @@
               int validator_requested_withdrawal,
               int nominator_requested_withdrawal,
               int validator_reward_share,
-              int validator_cover_ability
+              int validator_cover_ability,
               cell requests,
               cell transfers) impure inline {
   var st = begin_cell().store_slice(validator)

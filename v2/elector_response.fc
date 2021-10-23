@@ -26,7 +26,7 @@
       ;; notify sender about success
       return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
     }
-    save_data(_1, _2, _3, _4, _5, _6, _7, nominators, requests, transfers, proxies);
+    save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, transfers);
     if(incoming_op == 0xfffffffe) {
       return send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, 0, receipt_attachment, 1);
     }

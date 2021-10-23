@@ -1,8 +1,8 @@
-(int, int, int, int, int, int) get_pool_data() method_id {
+((int, int), (int, int), int, int, int, int, int, int) get_pool_data() method_id {
   var (validator_address, nominator_address, val_balance, nom_balance,
        val_request, nom_request,
        validator_reward_share, validator_cover_ability, _, _) = load_data();
   (int vwc, int vaddr_hash) = validator_address.parse_std_addr();
-  (int nwc, int naddr_hash) = nominator_data.parse_std_addr();  
+  (int nwc, int naddr_hash) = nominator_address.parse_std_addr();  
   return ((vwc, vaddr_hash),(nwc, naddr_hash), val_balance, nom_balance, val_request, nom_request, validator_reward_share, validator_cover_ability);
 }

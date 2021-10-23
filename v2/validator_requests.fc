@@ -34,7 +34,7 @@
   }
   ;; All checks we can make locally
   
-  (slice _1, slice _2
+  (slice _1, slice _2,
    int val_balance, int nom_balance, 
    int val_req, int nom_req, 
    int _7, 
@@ -59,7 +59,7 @@
                            .store_uint(elector_query_id, 64)
                            .store_slice(in_msg)
                .end_cell(),
-               1 ;; pay fees separately but fail on errors );
+               1);  ;; pay fees separately but fail on errors
   requests~register_request(elector_query_id, 
                             begin_cell()
                                         .store_uint(op,32)
@@ -86,7 +86,8 @@
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
-               .end_cell()
+               .end_cell(),
+               1
                );
   requests~register_request(elector_query_id,
                             begin_cell()
@@ -103,7 +104,7 @@
 ;; It is withdrawal of funds which formally is not owned by anybody
 () validator_withdraw (slice in_msg, int msg_value, int query_id, tuple storage, slice s_addr) impure {
   ensure_standart_fee(msg_value, 50000);
-  (slice _1, slice _2
+  (slice _1, slice _2,
    int val_balance, int nom_balance, 
    int val_req, int nom_req, 
    int _7, 

@@ -37,10 +37,10 @@
     }
 
   }
-  save_data(_1, _2, _3, _4, val_request, nom_request, _7, _8, _9, _10);
+  save_data(_1, _2, val_balance, nom_balance, val_request, nom_request, _7, _8, _9, _10);
   if(query_id) {
     return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 0, 64);
-  else {
+  } else {
     return send_text_request_accepted_message(s_addr, amount);
   }
 }
