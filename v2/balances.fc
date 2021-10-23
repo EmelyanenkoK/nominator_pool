@@ -1,0 +1,74 @@
+(cell, (int)) ~collect_matured(cell transfers) inline {
+  (int validators_elected_for, int stake_held_for, int prev_set_utime_since) = stake_lock_durations();
+  int matured = 0;
+  int threshold = prev_set_utime_since + stake_held_for;
+  do {
+    var (transfers', i, transfer, f) = transfers.udict_delete_get_min(32);
+    f = f & (i < threshold);
+    if (f) {
+      matured = matured + transfer~load_grams();
+      transfers = transfers';
+    }
+  } until (~ f);
+  return (transfers, (matured));
+}
+
+() notify_nominator (slice addr, int amount, int value) impure {
+    return send_message( addr, amount,
+                  begin_cell().store_uint(0x75706474, 32).store_int(value, 80).end_cell(), 1);
+}
+
+((int, int), ()) ~consider_withdrawal_requests((int, int) requests, slice validator, slice nominator, int val_balance, int nom_balance) {
+    (int val_request, int nom_request) = requests;
+    int me = get_balance().pair_first() - 10000000000; ;; keep 10 coins for storage
+    int withdraw_fee = 100000000; ;; 0.1 coins
+    val_request = min(val_request, val_balance);
+    nom_request = min(nom_request, nom_balance);
+    if((nom_request > 0) & (nom_request <= me)) {
+      send_message(nominator, nom_request - withdraw_fee, begin_cell().store_uint(0x77746864, 32).end_cell(), 0);
+      me -= nom_request;
+      nom_request = 0;
+    }
+    if( (~ nom_request) & (val_request <= me)) {
+      send_message(validator, val_request - withdraw_fee, begin_cell().store_uint(0x77746864, 32).end_cell(), 0);
+      val_request = 0;
+    }
+    return ((val_request, nom_request), ());
+}
+
+() update_reward_on_stake_return(slice validator, slice nominator,
+                                 int val_balance, int nom_balance,
+                                 int val_request, int nom_request,
+                                 int validator_reward_share, int validator_cover_ability, int _9, 
+                                 cell requests, cell transfers,
+                                 int  msg_value) impure {
+
+    int matured = transfers~collect_matured();
+    int notification_fee = 200000000; ;; 0.2 TON
+    int profit  = msg_value - matured - notification_fee;
+    int nominator_profit = 0;
+    ;; Note validator profit is consist of two parts: 
+    ;;  1) validation part proportional to validator_reward_share
+    ;;  2) nomination part proportional to his stake
+    if( profit >= 0 ) { 
+      int validation_profit = profit * validator_reward_share >> 16;
+      int participation_profit = profit - validation_profit;
+      int validator_share = participation_profit * val_balance /(val_balance + nom_balance);
+      nominator_profit = participation_profit - validator_share;
+      val_balance += validation_profit + validator_share;
+      nom_balance += nominator_profit;
+    } else {
+        ;; first distribute nomination part profit to validator, than to nominator
+        if (profit + val_balance >= 0) {
+          val_balance += profit;
+        } else {
+          nom_balance += val_balance + profit;
+          val_balance = 0;
+        }
+    }
+    if ( nominator_profit ) {
+      notify_nominator(nominator, nominator_profit, notification_fee * 4 / 5);
+    }
+    (val_request, nom_request)~consider_withdrawal_requests(validator, nominator, val_balance, nom_balance);
+    return ();
+}

@@ -1,5 +1,4 @@
-;; Nominator pool
-
+;; Validator control contract
 () recv_external(slice in_msg) impure {
   ;; do nothing for external messages
 }
