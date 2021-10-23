@@ -1,0 +1,78 @@
+() add_stake (slice s_addr, int msg_value, tuple storage, int query_id, int is_validator?) impure {
+  (slice _1, slice _2, 
+   int val_balance, int nom_balance,
+   int _5, int _6, int _7, int _8, cell _9, cell _10) = storage_untuple(storage);
+  int put_fee = 200000000; ;; 0.2 Coin
+  int stake = msg_value - put_fee;
+  if (is_validator?) {
+    val_balance += stake;
+  } else {
+    nom_balance += stake;
+  }
+  save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10);
+  if ( query_id ) {
+    return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
+  } else {
+    return send_text_stake_accepted_message(s_addr, stake, put_fee / 2);
+  }
+}
+
+
+() request_stake (slice s_addr, tuple storage, int query_id, int amount, int is_validator?) impure {
+  (slice _1, slice _2,
+   int val_balance, int nom_balance,
+   int val_request, int nom_request,
+   int _7, int _8, cell _9, cell _10) = storage_untuple(storage);
+  if (is_validator?) {
+    if ( (amount == 0 ) | ( val_request + amount > val_balance)) {
+      val_request = val_balance;
+    } else {
+      val_request += amount;
+    }
+  } else {
+    if ( (amount == 0 ) | ( nom_request + amount > nom_balance)) {
+      nom_request = nom_balance;
+    } else {
+      nom_request += amount;
+    }
+
+  }
+  save_data(_1, _2, _3, _4, val_request, nom_request, _7, _8, _9, _10);
+  if(query_id) {
+    return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 0, 64);
+  else {
+    return send_text_request_accepted_message(s_addr, amount);
+  }
+}
+
+(int) process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr, int is_validator?) impure {
+  int query_id = 0;
+  int op = in_msg~load_uint(32);
+  if ( ~ op ) {
+    op = in_msg~parse_text_command();
+  } else {
+    query_id = in_msg~load_uint(64);
+  }
+
+
+  if (op == 0xfeedc0de ) {
+    ;; put stake into pool
+    add_stake(s_addr, msg_value, storage, query_id, is_validator?);
+    return true;
+  }
+  if (op == 0x006e7bac ) {
+    int amount = 0; ;; Means all available
+    if (query_id) {
+      amount = in_msg~load_grams();
+    }
+    request_stake(s_addr, storage, query_id, amount, is_validator?);
+    return true;
+  }
+  if (op == 0xdead10cc) {
+    ;; validator's function allowed for nominators
+    throw_unless(112, msg_value > 1000000000);
+    recover_stake(msg_value, query_id, storage, s_addr);
+    return true;
+  }
+  return false;
+}

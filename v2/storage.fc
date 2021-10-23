@@ -1,0 +1,76 @@
+;; TLB Storage scheme
+;; Note address bits in pseudoaddress is sum of address and workchain,
+;; chances of collision and overflow are negligible. -1:00..000 has no ability to
+;; stake in pool
+;; nominator_data#_ staked_amount:Grams locked_amount:Grams = NominatorData;
+;;
+;; query_id#_ id:uint64 = QueryId;
+;; recover_stake_request#47657424 time:uint32 response_query_id:uint64 s_addr:MsgAddressInt = RequestBody;
+;; new_stake_request#4e73744b time:uint32 response_query_id:uint64 s_addr:MsgAddressInt amount:Grams = RequestBody;
+;; requests#_ dict:(HashmapE QueryId ^RequestBody) = Requests;
+;;
+;; timestamp#_ time:uint32: Timestamp;
+;; transfers#_ recent_outgoing:(HashmapE Timestamp Grams) = RecentTransfers;
+;;
+;;
+;;
+;; Note: Toncoin amount is practically bounded by 5 billions
+;; that give serialization of the Toncoin amounts 10 bytes max
+;; thus data always fit root cell
+;; 267*2 + 10*8*4 + 16*2 + 2
+;; storage#_ 
+;;           validator:MsgAddressInt(addr_std)
+;;           nominator:MsgAddressInt(addr_std)
+;;           validator_balance:Grams
+;;           nominator_balance:Grams
+;;           validator_requested_withdrawal:Grams
+;;           nominator_requested_withdrawal:Grams
+;;           validator_reward_share:uint16
+;;           validator_cover_ability:uint16
+;;           requests: Requests;
+;;           transfers: (HashmapE Timestamp Grams);
+
+(slice, slice, int, int, int, int, int, int, cell, cell) load_data () inline {
+  var ds = get_data().begin_parse();
+  return (
+          ds~load_msg_addr(),
+          ds~load_msg_addr(),
+          ds~load_grams(),
+          ds~load_grams(),
+          ds~load_grams(),
+          ds~load_grams(),
+          ds~load_uint(16),
+          ds~load_uint(16),
+          ds~load_dict(),
+          ds~load_dict()
+          );
+}
+
+() save_data (
+              slice validator,
+              slice nominator,
+              int validator_balance,
+              int nominator_balance,
+              int validator_requested_withdrawal,
+              int nominator_requested_withdrawal,
+              int validator_reward_share,
+              int validator_cover_ability
+              cell requests,
+              cell transfers) impure inline {
+  var st = begin_cell().store_slice(validator)
+                       .store_slice(nominator)
+                       .store_grams(validator_balance)
+                       .store_grams(nominator_balance)
+                       .store_grams(validator_requested_withdrawal)
+                       .store_grams(nominator_requested_withdrawal)
+                       .store_uint(validator_reward_share, 16)
+                       .store_uint(validator_cover_ability, 16)
+                       .store_dict(requests)
+                       .store_dict(transfers)
+            .end_cell();
+  set_data(st);
+}
+
+(cell, ()) ~register_request(cell requests, int query_id, cell request_data) {
+  return (requests.udict_set_ref(64, query_id, request_data), ());
+}

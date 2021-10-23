@@ -1,0 +1,3 @@
+(int) new_query_id () {
+    return now() + mod(cur_lt(), 4294967296);
+}

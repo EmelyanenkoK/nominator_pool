@@ -1,0 +1,148 @@
+() ensure_standart_fee(int msg_value, int id) inline {
+  int elector_fee = 1000000000;
+  int our_processing_fee = 50000000;
+  int receipt_attachment = 10000000;
+  throw_unless(312 + id, msg_value >= 1000000000 + 50000000 + 2 * 10000000);
+}
+
+() send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
+  ;; TODO check for timing
+  ensure_standart_fee(msg_value, 10000);
+  int amount = in_msg~load_grams();
+  slice cs = in_msg;
+  ;; Stake checks borrowed from https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L208
+  (int pool_wc, int pool_addr) = parse_std_addr(my_address());
+  var validator_pubkey = cs~load_uint(256);
+  var stake_at = cs~load_uint(32);
+  var max_factor = cs~load_uint(32);
+  var adnl_addr = cs~load_uint(256);
+  var signature = cs~load_ref().begin_parse().preload_bits(512);
+  cs.end_parse();
+  ifnot (check_data_signature(begin_cell()
+      .store_uint(0x654c5074, 32)
+      .store_uint(stake_at, 32)
+      .store_uint(max_factor, 32)
+      .store_uint(pool_addr, 256)
+      .store_uint(adnl_addr, 256)
+    .end_cell().begin_parse(), signature, validator_pubkey)) {
+    ;; incorrect signature
+    return send_receipt_message(s_addr, 0xee6f454c, query_id, 1, 0, 64);
+  }
+  if (max_factor < 0x10000) {
+    ;; factor must be >= 1. = 65536/65536
+    return send_receipt_message(s_addr, 0xee6f454c, query_id, 6, 0, 64);
+  }
+  ;; All checks we can make locally
+  
+  (slice _1, slice _2
+   int val_balance, int nom_balance, 
+   int val_req, int nom_req, 
+   int _7, 
+   int validator_cover_ability,
+   cell requests, 
+   cell _10) = storage_untuple(storage);
+  throw_unless(416, val_req | nom_req);
+  throw_unless(417, amount <= val_balance + nom_balance);
+  throw_if(473, 
+               max_recommended_punishment_for_validator_misbehaviour(amount) * validator_cover_ability >> 16
+                > 
+               val_balance);
+
+  int op = 0x4e73744b; 
+  int elector_query_id = new_query_id();
+
+  send_message(
+               elector_address(),
+               amount,
+               begin_cell()
+                           .store_uint(op, 32)
+                           .store_uint(elector_query_id, 64)
+                           .store_slice(in_msg)
+               .end_cell(),
+               1 ;; pay fees separately but fail on errors );
+  requests~register_request(elector_query_id, 
+                            begin_cell()
+                                        .store_uint(op,32)
+                                        .store_uint(query_id, 64)
+                                        .store_uint(now(),32)
+                                        .store_slice(s_addr)
+                                        .store_grams(amount)
+                            .end_cell());
+  save_data(_1, _2, val_balance, nom_balance, val_req, nom_req, _7, validator_cover_ability, requests, _10);
+  int receipt_attachment = 10000000;
+  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
+}
+
+() recover_stake (int msg_value, int query_id, tuple storage, slice s_addr) impure {
+  ensure_standart_fee(msg_value, 20000);
+  int elector_query_id = new_query_id();
+  int op = 0x47657424;
+  (slice _1, slice _2, int _3, int _4, int _5, int _6, int _7, int _8,
+   cell requests, 
+   cell _10) = storage_untuple(storage);
+
+  send_message(elector_address(),
+               1000000000,
+               begin_cell()
+                           .store_uint(op, 32)
+                           .store_uint(elector_query_id, 64)
+               .end_cell()
+               );
+  requests~register_request(elector_query_id,
+                            begin_cell()
+                                        .store_uint(op,32)
+                                        .store_uint(query_id, 64)
+                                        .store_uint(now(), 32)
+                                        .store_slice(s_addr)
+                            .end_cell());
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, requests, _10);
+  int receipt_attachment = 10000000;
+  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
+}
+
+;; It is withdrawal of funds which formally is not owned by anybody
+() validator_withdraw (slice in_msg, int msg_value, int query_id, tuple storage, slice s_addr) impure {
+  ensure_standart_fee(msg_value, 50000);
+  (slice _1, slice _2
+   int val_balance, int nom_balance, 
+   int val_req, int nom_req, 
+   int _7, 
+   int _8,
+   cell _9, 
+   cell _10) = storage_untuple(storage);
+  int amount = in_msg~load_grams();
+  int op = 0x006e7bac;
+  throw_if(416, val_req | nom_req); 
+  raw_reserve(val_balance + nom_balance, 0);
+  raw_reserve(10000000000, 0); ;; Save at least 10 Toncoins for storage fees
+  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, amount, 1);
+}
+
+
+;; returns true if found and processed validator request
+(int) process_validator_request (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
+  if (in_msg.slice_empty?()) {
+    return false;
+  }
+  int op = in_msg~load_uint(32);
+  if ( op == 0 ) { ;; op==0 - comment interface is not available for validator
+    return false;
+  }
+  int query_id = in_msg~load_uint(64);
+
+  if (op == 0x4e73744b) {
+    ;; new stake message
+    send_new_stake(msg_value, query_id, storage, s_addr, in_msg);
+    return true;
+  }
+  if (op == 0x47657424) {
+    ;; recover stake request
+    recover_stake(msg_value, query_id, storage, s_addr); ;;(op, s_addr, in_msg, query_id);
+    return true;
+  }
+  if (op == 0x006e7bac) {
+    validator_withdraw(in_msg, msg_value, query_id, storage, s_addr);
+    return true;
+  }
+  return false;
+}
