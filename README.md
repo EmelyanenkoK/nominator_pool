@@ -26,5 +26,5 @@ It also allows nominators to request a refund from the elector smartcontract in 
 Building requires installed funC (for more information see [docs](https://test.ton.org/FullNode-HOWTO.txt)). The exact command for the building is presented in [BUILD.md file](https://github.com/EmelyanenkoK/nominator_pool/blob/master/BUILD.md).
 
 # Testing
-Currently, we test this contract in private testnets and will be glad for any feedback. You can leave your findings in issues or send PM in [telegram](t.me/rulon).
-You can also facilitate testing in the original public network by sending tokens to the developers' [address](https://test.ton.org/testnet/account?account=EQDGpS6ADl3yOCc1ClWUY-bHDaEVtTLx6fY_RCbLMSjPxWMr).
+Currently, we test this contract in private testnets and will be glad for any feedback. You can leave your findings in issues or send PM in [telegram](https://t.me/rulon).
+You can also facilitate testing in the original public network by sending tokens to the developers' [address](https://test.toncoin.org/testnet/account?account=EQDGpS6ADl3yOCc1ClWUY-bHDaEVtTLx6fY_RCbLMSjPxWMr).
