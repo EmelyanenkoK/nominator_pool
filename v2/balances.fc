@@ -1,7 +1,7 @@
 
-() notify_nominator (slice addr, int amount, int value) impure {
-    return send_message( addr, amount,
-                  begin_cell().store_uint(0x75706474, 32).store_int(value, 80).end_cell(), 1);
+() notify_nominator (slice addr, int pnl, int total, int value) impure {
+    return send_message( addr, value,
+                  begin_cell().store_uint(0x75706474, 32).store_int(pnl, 80).store_int(total,80).end_cell(), 1);
 }
 
 ((int, int), ()) ~consider_withdrawal_requests((int, int) requests, slice validator, slice nominator, int val_balance, int nom_balance) {
@@ -50,12 +50,13 @@
         if (profit + val_balance >= 0) {
           val_balance += profit;
         } else {
-          nom_balance += val_balance + profit;
+          nominator_profit = val_balance + profit;
+          nom_balance += nominator_profit;
           val_balance = 0;
         }
     }
     if ( nominator_profit ) {
-      notify_nominator(nominator, nominator_profit, notification_fee * 4 / 5);
+      notify_nominator(nominator, nominator_profit, nom_balance, notification_fee * 4 / 5);
     }
     (val_request, nom_request)~consider_withdrawal_requests(validator, nominator, val_balance, nom_balance);
     save_data(validator, nominator,val_balance,nom_balance,val_request,nom_request,validator_reward_share,validator_cover_ability,_9, stake_on_elector, req);
