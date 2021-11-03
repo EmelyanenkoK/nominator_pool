@@ -22,23 +22,20 @@
     return ((val_request, nom_request), ());
 }
 
-() update_reward_on_stake_return(slice validator, slice nominator,
-                                 int val_balance, int nom_balance,
-                                 int val_request, int nom_request,
-                                 int validator_reward_share, int validator_cover_ability, int _9,
-                                 int stake_on_elector,
-                                 builder req,
+((int, int, int, int), ()) ~update_balances_on_stake_return( (int, int, int, int) data,
+                                 slice validator, slice nominator,
+                                 int validator_reward_share,
+                                 int matured,
                                  int  msg_value) impure {
-
-    int matured = stake_on_elector;
-    stake_on_elector = 0;
+    (int val_balance, int nom_balance,
+     int val_request, int nom_request) = data;
     int notification_fee = 200000000; ;; 0.2 TON
     int profit  = msg_value - matured - notification_fee;
     int nominator_profit = 0;
-    ;; Note validator profit is consist of two parts: 
+    ;; Note validator profit is consist of two parts:
     ;;  1) validation part proportional to validator_reward_share
     ;;  2) nomination part proportional to his stake
-    if( profit >= 0 ) { 
+    if( profit >= 0 ) {
       int validation_profit = profit * validator_reward_share >> 16;
       int participation_profit = profit - validation_profit;
       int validator_share = participation_profit * val_balance /(val_balance + nom_balance);
@@ -59,6 +56,5 @@
       notify_nominator(nominator, nominator_profit, nom_balance, notification_fee * 4 / 5);
     }
     (val_request, nom_request)~consider_withdrawal_requests(validator, nominator, val_balance, nom_balance);
-    save_data(validator, nominator,val_balance,nom_balance,val_request,nom_request,validator_reward_share,validator_cover_ability,_9, stake_on_elector, req);
-    return ();
+    return ((val_balance, nom_balance, val_request, nom_request), ());
 }

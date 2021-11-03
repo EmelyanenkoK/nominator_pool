@@ -1,0 +1,49 @@
+(int) can_send_next_request(int last_stake_request, slice on_fly_query) {
+  (int stored_op, int time, int stored_query_id, slice s_addr) = deserialize_query(on_fly_query);
+  int other_queries_ok? = (stored_op == 0) | (now() > 65536);
+  (int validators_elected_for, int stake_held_for, int utime_since)  = stake_lock_durations();
+  int stake_round_ok? = now() > (last_stake_request + validators_elected_for + stake_held_for);
+  return other_queries_ok? & stake_round_ok?;
+}
+
+(slice, int, int, slice, int, int) choose_proxy (cell front1, cell front2) {
+  (slice front_addr, int last_stake_sent, int stake_on_elector, slice on_fly_query) = deserialize_front(front1);
+  int second_proxy? = 0;
+  if ~(can_send_next_request(last_stake_sent, on_fly_query)) {
+    (front_addr, last_stake_sent, stake_on_elector, on_fly_query) = deserialize_front(front2);
+    second_proxy? = -1;
+  }
+  return (front_addr, last_stake_sent, stake_on_elector, on_fly_query, second_proxy?,
+          can_send_next_request(last_stake_sent, on_fly_query));
+}
+
+(slice, int, int, slice, int,  int) choose_proxy_by_address(cell front1, cell front2, slice addr) {
+  (slice front_addr, int last_stake_sent, int stake_on_elector, slice on_fly_query) = deserialize_front(front1);
+  int second_proxy? = 0;
+  if ~ equal_slices(front_addr, addr) {
+    (front_addr, last_stake_sent, stake_on_elector, on_fly_query) = deserialize_front(front2);
+    int second_proxy? = -1;
+  }
+  return (front_addr, last_stake_sent, stake_on_elector, on_fly_query, second_proxy?, equal_slices(front_addr, addr));
+}
+
+((cell, cell), ()) ~update_proxies ((cell, cell) fronts, slice front_addr, int last_stake_sent, int stake_on_elector, builder on_fly_query, int second_proxy?) {
+  (cell front1, cell front2) = fronts;
+  cell front = serialize_front(front_addr, last_stake_sent, stake_on_elector, on_fly_query);
+  if(second_proxy?) {
+    return ((front1, front), ());
+  } else {
+    return ((front, front2),());
+  }
+}
+
+() send_through_proxy(slice proxy, int amount, cell body) impure inline_ref {
+  var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(proxy)
+    .store_grams(amount)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_slice(elector_address())
+    .store_ref(body);
+  send_raw_message(msg.end_cell(), 1);
+}

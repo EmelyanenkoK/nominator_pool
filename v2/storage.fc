@@ -2,29 +2,23 @@
 ;; Note address bits in pseudoaddress is sum of address and workchain,
 ;; chances of collision and overflow are negligible. -1:00..000 has no ability to
 ;; stake in pool
-;; nominator_data#_ staked_amount:Grams locked_amount:Grams = NominatorData;
-;;
-;; query_id#_ id:uint64 = QueryId;
-;; recover_stake_request#47657424 time:uint32 response_query_id:uint64 s_addr:MsgAddressInt = RequestBody;
-;; new_stake_request#4e73744b time:uint32 response_query_id:uint64 s_addr:MsgAddressInt amount:Grams = RequestBody;
-;; requests#_ dict:(HashmapE QueryId ^RequestBody) = Requests;
-;;
-;; timestamp#_ time:uint32: Timestamp;
-;; transfers#_ recent_outgoing:(HashmapE Timestamp Grams) = RecentTransfers;
 ;;
 ;; participant_data#_ address:MsgAddressInt balance:Grams requested_amount:Grams = Participant;
 ;; empty_query#0 = Query;
 ;; query#1 op:uint32 time:uint32 response_id:uint64 s_addr:MsgAddressInt = Query;
+;; front#_ address:MsgAddressInto
+;;         last_stake_sent:uint32 stake_on_elector:Grams on_fly_query:Query = Front;
+
 ;; storage#_ 
 ;;           validator:^Participant
 ;;           nominator:^Participant
 ;;           validator_reward_share:uint16
 ;;           validator_cover_ability:uint16
-;;           last_stake_sent:uint32
-;;           stake_on_elector:Grams
-;;           on_fly_query: Query;
+;;           front1: ^Front
+;;           front2: ^Front
+;;           = Storage;
 
-(slice, slice, int, int, int, int, int, int, int, int, slice) load_data () inline {
+(slice, slice, int, int, int, int, int, int, cell, cell) load_data () inline {
   var ds = get_data().begin_parse();
   slice v_participant = ds~load_ref().begin_parse();
   slice n_participant = ds~load_ref().begin_parse();
@@ -37,9 +31,8 @@
           n_participant~load_grams(),
           ds~load_uint(16),
           ds~load_uint(16),
-          ds~load_uint(32),
-          ds~load_grams(),
-          ds
+          ds~load_ref(),
+          ds~load_ref()
           );
 }
 
@@ -52,9 +45,7 @@
               int nominator_requested_withdrawal,
               int validator_reward_share,
               int validator_cover_ability,
-              int last_stake_sent,
-              int stake_on_elector,
-              builder on_fly_query) impure inline {
+              cell front1, cell front2) impure inline {
   cell v_participant = begin_cell().store_slice(validator)
                                    .store_grams(validator_balance)
                                    .store_grams(validator_requested_withdrawal)
@@ -67,9 +58,8 @@
                        .store_ref(n_participant)
                        .store_uint(validator_reward_share, 16)
                        .store_uint(validator_cover_ability, 16)
-                       .store_uint(last_stake_sent, 32)
-                       .store_grams(stake_on_elector)
-                       .store_builder(on_fly_query)
+                       .store_ref(front1)
+                       .store_ref(front2)
             .end_cell();
   set_data(st);
 }
@@ -88,4 +78,20 @@ builder empty_query() inline {
 builder serialize_query(int op, int time, int query_id, slice address) inline {
    return begin_cell().store_int(-1, 1).store_uint(op, 32).store_uint(time, 32)
                       .store_uint(query_id, 64).store_slice(address);
+}
+
+(slice, int, int, slice) deserialize_front (cell front) {
+  slice fs =  front.begin_parse();
+  return (fs~load_msg_addr(),
+          fs~load_uint(32),
+          fs~load_grams(),
+          fs);
+}
+
+cell serialize_front(slice addr, int last_stake_sent, int stake_on_elector, builder query) {
+  return begin_cell().store_slice(addr)
+                     .store_uint(last_stake_sent,32)
+                     .store_grams(stake_on_elector)
+                     .store_builder(query)
+         .end_cell();                        
 }

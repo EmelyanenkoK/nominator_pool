@@ -5,14 +5,6 @@
   throw_unless(312 + id, msg_value >= 1000000000 + 50000000 + 2 * 10000000);
 }
 
-(int) can_send_next_request(int last_stake_request, slice on_fly_query) {
-  (int stored_op, int time, int stored_query_id, slice s_addr) = deserialize_query(on_fly_query);
-  int other_queries_ok? = (stored_op == 0) | (now() > 65536);
-  (int validators_elected_for, int stake_held_for, int utime_since)  = stake_lock_durations();
-  int stake_round_ok? = now() > (last_stake_request + validators_elected_for + stake_held_for);
-  return other_queries_ok? & stake_round_ok?;
-}
-
 () send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
   ensure_standart_fee(msg_value, 10000);
   int amount = in_msg~load_grams();
@@ -46,10 +38,9 @@
    int val_req, int nom_req, 
    int _7, 
    int validator_cover_ability,
-   int last_stake_request,
-   int stake_on_elector,
-   slice on_fly_query) = storage_untuple(storage);
-  throw_unless(415, can_send_next_request(last_stake_request, on_fly_query));
+   cell front1, cell front2) = storage_untuple(storage);
+  (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
+  throw_unless(415, chosen?);
   throw_unless(416, val_req | nom_req);
   throw_unless(417, amount <= val_balance + nom_balance);
   throw_if(473, 
@@ -60,19 +51,19 @@
   int op = 0x4e73744b; 
   int elector_query_id = new_query_id();
 
-  send_message(
-               elector_address(),
+  send_through_proxy(
+               front_addr,
                amount,
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
                            .store_slice(in_msg)
-               .end_cell(),
-               1);  ;; pay fees separately but fail on errors
+               .end_cell());
   builder qry = serialize_query(op, now(), query_id, s_addr);
   last_stake_request = now(); ;; write time immediately, remove on error on elector side
   stake_on_elector += amount;
-  save_data(_1, _2, val_balance, nom_balance, val_req, nom_req, _7, validator_cover_ability, last_stake_request, stake_on_elector, qry);
+  (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
+  save_data(_1, _2, val_balance, nom_balance, val_req, nom_req, _7, validator_cover_ability, front1, front2);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
@@ -81,20 +72,19 @@
   ensure_standart_fee(msg_value, 20000);
   int elector_query_id = new_query_id();
   int op = 0x47657424;
-  (slice _1, slice _2, int _3, int _4, int _5, int _6, int _7, int _8, int last_stake_request,
-   int _10,
-   slice on_fly_query) = storage_untuple(storage);
-  throw_unless(109, can_send_next_request(last_stake_request, on_fly_query));
-  send_message(elector_address(),
+  (slice _1, slice _2, int _3, int _4, int _5, int _6, int _7, int _8,
+   cell front1, cell front2) = storage_untuple(storage);
+  (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
+  throw_unless(109, chosen?);
+  send_through_proxy(front_addr,
                1000000000,
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
-               .end_cell(),
-               1
-               );
+               .end_cell() );
   builder qry = serialize_query(op, now(), query_id, s_addr);
-  save_data(_1, _2, _3, _4, _5, _6, _7, _8, last_stake_request, _10, qry);
+  (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
+  save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
   int receipt_attachment = 10000000;
   return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
 }
@@ -107,9 +97,8 @@
    int val_req, int nom_req, 
    int _7, 
    int _8,
-   int _9,
-   cell _10, 
-   cell _11) = storage_untuple(storage);
+   cell _9, 
+   cell _10) = storage_untuple(storage);
   int amount = in_msg~load_grams();
   int op = 0x006e7bac;
   throw_if(416, val_req | nom_req); 

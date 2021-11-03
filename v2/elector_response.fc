@@ -1,15 +1,26 @@
-() process_elector_response (int flags, slice in_msg, int msg_value) impure {
+;; Only elector should send message through proxy
+int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
+  (slice _1, slice _2,
+   int _3, int _4,
+   int _5, int _6,
+   int _7, int _8, cell front1, cell front2) = storage_untuple(storage);
+  (slice front_addr, int last_stake_sent, int stake_on_elector, slice on_fly_query,
+   int proxy_id, int proxy_found?) = choose_proxy_by_address(front1, front2, s_addr);
+  if ~ proxy_found? {
+    return 0;
+  }
+
+  if ~ equal_slices(in_msg~load_msg_addr(), elector_address()) {
+    return 0;
+  }
+  int flags = in_msg~load_uint(4);
   if( flags & 1) {
     ;; Should we process bounced (that is errors) responses somehow?
     ;; Probably no, there is no throws in stake requests except when msg_value < 1
-    return (); 
+    return -1;
   }
   int incoming_op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
-  (slice _1, slice _2,
-   int _3, int _4, 
-   int _5, int _6, 
-   int _7, int _8, int _9, int stake_on_elector, slice on_fly_query) = load_data();
   (int stored_op, int time, int stored_query_id, slice s_addr) = deserialize_query(on_fly_query);
   ;; After simplification of contract we allow only one request on fly at a time
   ;; in this case we do not afraid to mix query_ids and can use response_query_id as query_id to elector
@@ -23,16 +34,22 @@
     ;; If stake returns  correctly op = 0xf96f7324, else 0xfffffffe
     ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartont/elector-code.fc#L403-426
     if(incoming_op == 0xf96f7324) {
-      ;; stake_on_elector will be nullified inside
-      update_reward_on_stake_return(_1, _2, _3, _4, _5, _6, _7, _8, _9, stake_on_elector, qry, msg_value);
+      (_3, _4, _5, _6)~update_balances_on_stake_return(_1, _2, _7, stake_on_elector, msg_value);
+      stake_on_elector = 0;
+      (front1, front2)~update_proxies(front_addr, last_stake_sent, stake_on_elector, qry, proxy_id);
+      save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
       ;; notify sender about success
-      return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
+      send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
+    } else {
+      (front1, front2)~update_proxies(front_addr, last_stake_sent, stake_on_elector, qry, proxy_id);
+      save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
+      if(incoming_op == 0xfffffffe) {
+        send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, 0, receipt_attachment, 1);
+      } else {
+        send_receipt_message(s_addr, stored_op + 0x0000f000, response_query_id, incoming_op, receipt_attachment, 1);
+      }
     }
-    save_data(_1, _2, _3, _4, _5, _6, _7, _8, _9, stake_on_elector, qry);
-    if(incoming_op == 0xfffffffe) {
-      return send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, 0, receipt_attachment, 1);
-    }
-    return send_receipt_message(s_addr, stored_op + 0x0000f000, response_query_id, incoming_op, receipt_attachment, 1);
+    return -1;
   }
 
   if ( stored_op == 0x4e73744b) {
@@ -40,17 +57,22 @@
     ;; Possible answers 0xf374484c (on success) and 0xee6f454c (on error)
     ;; https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L173
     if(incoming_op == 0xf374484c) {
-      save_data(_1, _2, _3, _4, _5, _6, _7, _8, _9, stake_on_elector, qry);
-      return send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
+      (front1, front2)~update_proxies(front_addr, last_stake_sent, stake_on_elector, qry, proxy_id);
+      save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
+      send_receipt_message(s_addr, stored_op + 0x10000000, response_query_id, 0, receipt_attachment, 1);
+    } else {
+      stake_on_elector = max(0, stake_on_elector - msg_value); ;;What about fee?
+      (front1, front2)~update_proxies(front_addr, last_stake_sent, stake_on_elector, qry, proxy_id);
+      save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
+      if(incoming_op == 0xee6f454c) {
+        int error_code = in_msg~load_uint(32);
+        send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, error_code, receipt_attachment, 1);
+      } else {
+        send_receipt_message(s_addr, stored_op + 0x0000f000, response_query_id, incoming_op, receipt_attachment, 1);
+      }
     }
-    stake_on_elector = max(0, stake_on_elector - msg_value); ;;What about fee?
-    save_data(_1, _2, _3, _4, _5, _6, _7, _8, _9, stake_on_elector, qry);
-    if(incoming_op == 0xee6f454c) {
-      int error_code = in_msg~load_uint(32);
-      return send_receipt_message(s_addr, stored_op + 0x20000000, response_query_id, error_code, receipt_attachment, 1);
-    }
-    return send_receipt_message(s_addr, stored_op + 0x0000f000, response_query_id, incoming_op, receipt_attachment, 1);
+    return -1;
   }
   
-  return ();
+  return 0;
 }
