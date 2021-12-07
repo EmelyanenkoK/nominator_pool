@@ -10,11 +10,7 @@
     nom_balance += stake;
   }
   save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10);
-  if ( query_id ) {
-    return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
-  } else {
-    return send_text_stake_accepted_message(s_addr, stake, put_fee / 2);
-  }
+  return send_receipt_message(s_addr, 0xfeedc0de + 0x00001000, query_id, 0, put_fee / 2, 1);
 }
 
 
@@ -38,21 +34,13 @@
 
   }
   save_data(_1, _2, val_balance, nom_balance, val_request, nom_request, _7, _8, _9, _10);
-  if(query_id) {
-    return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 0, 64);
-  } else {
-    return send_text_request_accepted_message(s_addr, amount);
-  }
+  return send_receipt_message(s_addr, 0x0c0010ff + 0x00001000, query_id, 0, 0, 64);
 }
 
 (int) process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr, int is_validator?) impure {
   int query_id = 0;
   int op = in_msg~load_uint(32);
-  if ( ~ op ) {
-    op = in_msg~parse_text_command();
-  } else {
-    query_id = in_msg~load_uint(64);
-  }
+  query_id = in_msg~load_uint(64);
 
 
   if (op == 0xfeedc0de ) {
