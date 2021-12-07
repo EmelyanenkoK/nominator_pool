@@ -2,11 +2,11 @@
   int elector_fee = 1000000000;
   int our_processing_fee = 50000000;
   int receipt_attachment = 10000000;
-  throw_unless(312 + id, msg_value >= 1000000000 + 50000000 + 2 * 10000000);
+  throw_unless(err::insufficient_fee(id), msg_value >= 1000000000 + 50000000 + 2 * 10000000);
 }
 
 () send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
-  ensure_standart_fee(msg_value, 10000);
+  ensure_standart_fee(msg_value, 1);
   int amount = in_msg~load_grams();
   slice cs = in_msg;
   ;; Stake checks borrowed from https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L208
@@ -40,10 +40,10 @@
    int validator_cover_ability,
    cell front1, cell front2) = storage_untuple(storage);
   (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
-  throw_unless(415, chosen?);
-  throw_unless(416, val_req | nom_req);
-  throw_unless(417, amount <= val_balance + nom_balance);
-  throw_if(473, 
+  throw_unless(err::no_suitable_proxy(), chosen?);
+  throw_if(err::unprocessed_withdrawal_requests(), val_req | nom_req);
+  throw_unless(err::validation_amount_too_high(), amount <= val_balance + nom_balance);
+  throw_if(err::cover_ability_violation(), 
                max_recommended_punishment_for_validator_misbehaviour(amount) * validator_cover_ability >> 16
                 > 
                val_balance);
@@ -69,13 +69,13 @@
 }
 
 () recover_stake (int msg_value, int query_id, tuple storage, slice s_addr) impure {
-  ensure_standart_fee(msg_value, 20000);
+  ensure_standart_fee(msg_value, 2);
   int elector_query_id = new_query_id();
   int op = 0x47657424;
   (slice _1, slice _2, int _3, int _4, int _5, int _6, int _7, int _8,
    cell front1, cell front2) = storage_untuple(storage);
   (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
-  throw_unless(109, chosen?);
+  throw_unless(err::no_suitable_proxy(), chosen?);
   send_through_proxy(front_addr,
                1000000000,
                begin_cell()
@@ -91,7 +91,7 @@
 
 ;; It is withdrawal of funds which formally is not owned by anybody
 () validator_withdraw (slice in_msg, int msg_value, int query_id, tuple storage, slice s_addr) impure {
-  ensure_standart_fee(msg_value, 50000);
+  ensure_standart_fee(msg_value, 3);
   (slice _1, slice _2,
    int val_balance, int nom_balance, 
    int val_req, int nom_req, 

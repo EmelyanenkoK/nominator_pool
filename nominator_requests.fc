@@ -70,7 +70,7 @@
   }
   if (op == 0xdead10cc) {
     ;; validator's function allowed for nominators
-    throw_unless(112, msg_value > 1000000000);
+    throw_unless(err::insufficient_fee(0), msg_value > 1000000000);
     recover_stake(msg_value, query_id, storage, s_addr);
     return true;
   }

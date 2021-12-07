@@ -28,9 +28,9 @@
     processed? = try_process_as_proxied(in_msg, msg_value, storage, s_addr);
   }
   if( ~ processed?)  {
-    throw_unless(205, is_validator? | equal_slices(s_addr, storage.second()));
+    throw_unless(err::unauthorized_request(), is_validator? | equal_slices(s_addr, storage.second()));
     ;; validator balance requests gets here too
     processed? = process_nominator_request(in_msg, msg_value, storage, s_addr, is_validator?);
   }
-  throw_unless(404, processed?);
+  throw_unless(err::unknown_request(), processed?);
 }

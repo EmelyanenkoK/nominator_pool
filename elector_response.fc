@@ -25,7 +25,7 @@ int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_
   ;; After simplification of contract we allow only one request on fly at a time
   ;; in this case we do not afraid to mix query_ids and can use response_query_id as query_id to elector
   int response_query_id = stored_query_id;
-  throw_unless(201, stored_query_id == query_id);
+  throw_unless(err::unknown_response(), stored_query_id == query_id);
   builder qry = empty_query();
   int receipt_attachment = 10000000;
 

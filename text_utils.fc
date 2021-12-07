@@ -3,19 +3,19 @@
     ;; 4 possible commands lock, stake, recover, withdraw
     int first_char = in_msg~load_uint(8);
     if( first_char == 108) { ;; l
-      throw_unless(505, in_msg~load_uint(24) == 7299947); ;; ock
+      throw_unless(err::unknown_text_command(), in_msg~load_uint(24) == 7299947); ;; ock
       op = 0x0c0010ff;
     }
     if( first_char == 114 ) { ;; r
-      throw_unless(505, in_msg~load_uint(48) == 111477746197874); ;; ecover
+      throw_unless(err::unknown_text_command(), in_msg~load_uint(48) == 111477746197874); ;; ecover
       op = 0xdead10cc;
     }
     if( first_char == 115 ) { ;; s
-      throw_unless(505, in_msg~load_uint(32) == 1952541541); ;; take
+      throw_unless(err::unknown_text_command(), in_msg~load_uint(32) == 1952541541); ;; take
       op = 0xfeedc0de;
     }
     if( first_char == 119 ) { ;; w
-      throw_unless(505, in_msg~load_uint(56) == 29682864265257335); ;; ithdraw
+      throw_unless(err::unknown_text_command(), in_msg~load_uint(56) == 29682864265257335); ;; ithdraw
       op = 0x006e7bac;
     }
     return (in_msg, (op));
