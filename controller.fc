@@ -1,6 +1,9 @@
 ;; Validator control contract
 () recv_external(slice in_msg) impure {
-  ;; do nothing for external messages
+  ifnot( is_init() ) {
+    init_fronts(in_msg~load_msg_addr(), in_msg~load_msg_addr());
+    accept_message();
+  }
 }
 
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {

@@ -95,3 +95,17 @@ cell serialize_front(slice addr, int last_stake_sent, int stake_on_elector, buil
                      .store_builder(query)
          .end_cell();                        
 }
+
+int is_init() inline {
+  return get_data().begin_parse().slice_refs() == 2;
+}
+
+() init_fronts(slice addr1, slice addr2) impure {
+  slice ds = get_data().begin_parse();
+  set_data( begin_cell()
+              .store_slice(ds)
+              .store_ref(serialize_front(addr1, 0, 0, empty_query()))
+              .store_ref(serialize_front(addr2, 0, 0, empty_query()))
+            .end_cell()
+  );
+}
