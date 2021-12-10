@@ -1,1 +1,9 @@
-func -SPA stdlib.fc nonstdlib.fc error_codes.fc storage.fc utils.fc message_utils.fc config_utils.fc text_utils.fc proxy_utils.fc validator_requests.fc nominator_requests.fc balances.fc elector_response.fc controller.fc -o nominator-pool-code.fif
+func -SPA stdlib.fc nonstdlib.fc error_codes.fc utils.fc message_utils.fc \
+  validator-controller-utils/storage.fc \
+  validator-controller-utils/config_utils.fc \
+  validator-controller-utils/proxy_utils.fc \
+  validator-controller-utils/validator_requests.fc \
+  validator-controller-utils/nominator_requests.fc \
+  validator-controller-utils/balances.fc \
+  validator-controller-utils/elector_response.fc \
+  controller.fc -o nominator-pool-code.fif
