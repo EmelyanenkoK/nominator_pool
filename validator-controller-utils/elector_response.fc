@@ -1,3 +1,10 @@
+;; Receipt message interface
+;; response: code:uint8 error:code?uint32 = Response;
+;; 8bit error_code, (conditional) 32bit error details
+;; 0 - success / no error_details
+;; 1 - fail (known error op) / error_details provided by elector
+;; 2 - fail / error op
+
 ;; Only elector should send message through proxy
 int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_addr) impure {
   (slice _1, slice _2,
@@ -46,7 +53,7 @@ int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_
       (front1, front2)~update_proxies(front_addr, last_stake_sent, stake_on_elector, qry, proxy_id);
       save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
       send_receipt_message(s_addr, stored_op | 0x80000000, response_query_id,
-                           (1 << 32) + incoming_op, 40,
+                           (2 << 32) + incoming_op, 40,
                            response_amount + fees::receipt(),
                            1);
     }
