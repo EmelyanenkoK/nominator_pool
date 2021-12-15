@@ -27,7 +27,6 @@ int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_
   int response_query_id = stored_query_id;
   throw_unless(err::unknown_response(), stored_query_id == query_id);
   builder qry = empty_query();
-  int receipt_attachment = 10000000;
 
   if ( stored_op == op::elector::request::refund()) {
     ;; Refund stake processing
@@ -41,14 +40,14 @@ int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_
       ;; notify sender about success
       send_receipt_message(s_addr, stored_op | 0x80000000, response_query_id,
                            0, 8,
-                           response_amount + receipt_attachment,
+                           response_amount + fees::receipt(),
                            1);
     } else {
       (front1, front2)~update_proxies(front_addr, last_stake_sent, stake_on_elector, qry, proxy_id);
       save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
       send_receipt_message(s_addr, stored_op | 0x80000000, response_query_id,
                            (1 << 32) + incoming_op, 40,
-                           response_amount + receipt_attachment,
+                           response_amount + fees::receipt(),
                            1);
     }
     return -1;
@@ -63,7 +62,7 @@ int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_
       save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
       send_receipt_message(s_addr, stored_op | 0x80000000, response_query_id,
                            0, 8,
-                           response_amount + receipt_attachment,
+                           response_amount + fees::receipt(),
                            1);
     } else {
       stake_on_elector = max(0, stake_on_elector - msg_value); ;;What about fee?
@@ -73,12 +72,12 @@ int try_process_as_proxied (slice in_msg, int msg_value, tuple storage, slice s_
         int error_code = in_msg~load_uint(32);
         send_receipt_message(s_addr, stored_op | 0x80000000, response_query_id,
                              (1 << 32) + error_code, 40,
-                             response_amount + receipt_attachment,
+                             response_amount + fees::receipt(),
                              1);
       } else {
         send_receipt_message(s_addr, stored_op | 0x80000000, response_query_id,
                              (2 << 32) + incoming_op, 40,
-                             response_amount + receipt_attachment,
+                             response_amount + fees::receipt(),
                              1);
       }
     }

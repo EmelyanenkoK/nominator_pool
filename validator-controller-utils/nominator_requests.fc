@@ -2,15 +2,14 @@
   (slice _1, slice _2, 
    int val_balance, int nom_balance,
    int _5, int _6, int _7, int _8, cell _9, cell _10) = storage_untuple(storage);
-  int put_fee = 200000000; ;; 0.2 Coin TODO move to constants
-  int stake = msg_value - put_fee;
+  int stake = msg_value - fees::deposit() - fees::receipt();
   if (is_validator?) {
     val_balance += stake;
   } else {
     nom_balance += stake;
   }
   save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10);
-  return send_receipt_message(s_addr, op::validator::add_stake() | 0x80000000, query_id, 1, 32, put_fee / 2, 1);
+  return send_receipt_message(s_addr, op::validator::add_stake() | 0x80000000, query_id, 1, 32, fees::receipt(), 1);
 }
 
 

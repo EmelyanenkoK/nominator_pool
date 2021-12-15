@@ -1,0 +1,11 @@
+int fees::elector() asm "1000000000 PUSHINT";
+int fees::stake_operation() asm "50000000 PUSHINT";
+int fees::receipt() asm "10000000 PUSHINT";
+int fees::storage_reserve() asm "10000000000 PUSHINT";
+
+int fees::deposit() asm "20000000 PUSHINT";
+int fees::withdraw() asm "20000000 PUSHINT";
+
+int fees::profit_notification() asm "200000000 PUSHINT";
+int fees::profit_operation() asm "10000000 PUSHINT";
+

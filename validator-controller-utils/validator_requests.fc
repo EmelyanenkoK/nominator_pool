@@ -1,9 +1,5 @@
 (int) subtract_standart_fee(int msg_value, int id) inline {
-  ;; TODO move fees to header
-  int elector_fee = 1000000000;
-  int our_processing_fee = 50000000;
-  int receipt_attachment = 10000000;
-  msg_value =  msg_value - 1000000000 - 50000000 - 10000000;
+  msg_value =  msg_value - fees::elector() - fees::stake_operation() - fees::receipt();
   throw_unless(err::insufficient_fee(id), msg_value >= 0);
   return msg_value;
 }
@@ -78,7 +74,7 @@
   (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
   throw_unless(err::no_suitable_proxy(), chosen?);
   send_through_proxy(front_addr,
-               1000000000,
+               fees::elector(),
                begin_cell()
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
@@ -102,8 +98,8 @@
   int op = 0x006e7bac;
   throw_if(416, val_req | nom_req); 
   raw_reserve(val_balance + nom_balance, 0);
-  raw_reserve(10000000000, 0); ;; Save at least 10 Toncoins for storage fees
-  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, 0, amount, 1);
+  raw_reserve(fees::storage_reserve(), 0); ;; Save at least 10 Toncoins for storage fees
+  return send_receipt_message(s_addr, op | 0x80000000, query_id, 0, 0, amount, 1);
 }
 
 
