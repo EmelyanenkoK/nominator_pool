@@ -2,7 +2,7 @@
   (slice _1, slice _2, 
    int val_balance, int nom_balance,
    int _5, int _6, int _7, int _8, cell _9, cell _10) = storage_untuple(storage);
-  int put_fee = 200000000; ;; 0.2 Coin
+  int put_fee = 200000000; ;; 0.2 Coin TODO move to constants
   int stake = msg_value - put_fee;
   if (is_validator?) {
     val_balance += stake;
@@ -38,10 +38,8 @@
 }
 
 (int) process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr, int is_validator?) impure {
-  int query_id = 0;
   int op = in_msg~load_uint(32);
-  query_id = in_msg~load_uint(64);
-
+  int query_id = in_msg~load_uint(64);
 
   if (op == op::validator::add_stake() ) {
     ;; put stake into pool
@@ -49,16 +47,13 @@
     return true;
   }
   if (op == op::validator::withdraw() ) {
-    int amount = 0; ;; Means all available
-    if (query_id) {
-      amount = in_msg~load_grams();
-    }
+    int amount = in_msg~load_grams();
     request_withdrawal(s_addr, storage, query_id, amount, is_validator?);
     return true;
   }
   if (op == op::validator::recover_stake()) {
     ;; validator's function allowed for nominators
-    throw_unless(err::insufficient_fee(0), msg_value > 1000000000);
+    ;; throw_unless(err::insufficient_fee(0), msg_value > 1000000000);
     recover_stake(msg_value, query_id, storage, s_addr);
     return true;
   }

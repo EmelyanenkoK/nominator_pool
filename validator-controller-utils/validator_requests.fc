@@ -1,12 +1,15 @@
-() ensure_standart_fee(int msg_value, int id) inline {
+(int) subtract_standart_fee(int msg_value, int id) inline {
+  ;; TODO move fees to header
   int elector_fee = 1000000000;
   int our_processing_fee = 50000000;
   int receipt_attachment = 10000000;
-  throw_unless(err::insufficient_fee(id), msg_value >= 1000000000 + 50000000 + 2 * 10000000);
+  msg_value =  msg_value - 1000000000 - 50000000 - 10000000;
+  throw_unless(err::insufficient_fee(id), msg_value >= 0);
+  return msg_value;
 }
 
 () send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
-  ensure_standart_fee(msg_value, 1);
+  msg_value = subtract_standart_fee(msg_value, 1);
   int amount = in_msg~load_grams();
   slice cs = in_msg;
   ;; Stake checks borrowed from https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L208
@@ -59,17 +62,15 @@
                            .store_uint(elector_query_id, 64)
                            .store_slice(in_msg)
                .end_cell());
-  builder qry = serialize_query(op, now(), query_id, s_addr);
+  builder qry = serialize_query(op, now(), query_id, msg_value, s_addr);
   last_stake_request = now(); ;; write time immediately, remove on error on elector side
   stake_on_elector += amount;
   (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
   save_data(_1, _2, val_balance, nom_balance, val_req, nom_req, _7, validator_cover_ability, front1, front2);
-  int receipt_attachment = 10000000;
-  return send_receipt_message(s_addr, op | 0x80000000, query_id, 0, 0, receipt_attachment, 1);
 }
 
 () recover_stake (int msg_value, int query_id, tuple storage, slice s_addr) impure {
-  ensure_standart_fee(msg_value, 2);
+  msg_value = subtract_standart_fee(msg_value, 2);
   int elector_query_id = new_query_id();
   int op = 0x47657424;
   (slice _1, slice _2, int _3, int _4, int _5, int _6, int _7, int _8,
@@ -82,16 +83,14 @@
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
                .end_cell() );
-  builder qry = serialize_query(op, now(), query_id, s_addr);
+  builder qry = serialize_query(op, now(), query_id, msg_value, s_addr);
   (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
   save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
-  int receipt_attachment = 10000000;
-  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, 0, receipt_attachment, 1);
 }
 
 ;; It is withdrawal of funds which formally is not owned by anybody
 () validator_withdraw (slice in_msg, int msg_value, int query_id, tuple storage, slice s_addr) impure {
-  ensure_standart_fee(msg_value, 3);
+  msg_value = subtract_standart_fee(msg_value, 3);
   (slice _1, slice _2,
    int val_balance, int nom_balance, 
    int val_req, int nom_req, 

@@ -1,6 +1,6 @@
 (int) can_send_next_request(int last_stake_request, slice on_fly_query) {
-  (int stored_op, int time, int stored_query_id, slice s_addr) = deserialize_query(on_fly_query);
-  int other_queries_ok? = (stored_op == 0) | (now() > 65536);
+  (int stored_op, int time, int stored_query_id, int amount, slice s_addr) = deserialize_query(on_fly_query);
+  int other_queries_ok? = (stored_op == 0) | (now() - time > 65536);
   (int validators_elected_for, int stake_held_for, int utime_since)  = stake_lock_durations();
   int stake_round_ok? = now() > (last_stake_request + validators_elected_for + stake_held_for);
   return other_queries_ok? & stake_round_ok?;

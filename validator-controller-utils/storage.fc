@@ -5,7 +5,7 @@
 ;;
 ;; participant_data#_ address:MsgAddressInt balance:Grams requested_amount:Grams = Participant;
 ;; empty_query#0 = Query;
-;; query#1 op:uint32 time:uint32 response_id:uint64 s_addr:MsgAddressInt = Query;
+;; query#1 op:uint32 time:uint32 response_id:uint64 amount:Grams s_addr:MsgAddressInt = Query;
 ;; front#_ address:MsgAddressInto
 ;;         last_stake_sent:uint32 stake_on_elector:Grams on_fly_query:Query = Front;
 
@@ -64,20 +64,22 @@
   set_data(st);
 }
 
-(int, int, int, slice) deserialize_query (slice query) {
+(int, int, int, int, slice) deserialize_query (slice query) {
   if(query~load_int(1)) {
-    return (query~load_uint(32), query~load_uint(32), query~load_uint(64), query);
+    return (query~load_uint(32), query~load_uint(32),
+            query~load_uint(64), query~load_grams(),
+            query);
   } else {
-    return (0, 0, 0, null());
+    return (0, 0, 0, 0, null());
   }
 }
 
 builder empty_query() inline {
   return begin_cell().store_int(0, 1);
 }
-builder serialize_query(int op, int time, int query_id, slice address) inline {
+builder serialize_query(int op, int time, int query_id, int amount, slice address) inline {
    return begin_cell().store_int(-1, 1).store_uint(op, 32).store_uint(time, 32)
-                      .store_uint(query_id, 64).store_slice(address);
+                      .store_uint(query_id, 64).store_grams(amount).store_slice(address);
 }
 
 (slice, int, int, slice) deserialize_front (cell front) {
