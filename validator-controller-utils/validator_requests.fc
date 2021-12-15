@@ -25,11 +25,11 @@
       .store_uint(adnl_addr, 256)
     .end_cell().begin_parse(), signature, validator_pubkey)) {
     ;; incorrect signature
-    return send_receipt_message(s_addr, 0xee6f454c, query_id, 1, 0, 64);
+    return send_receipt_message(s_addr, 0xee6f454c, query_id, 1, 0, 0, 64);
   }
   if (max_factor < 0x10000) {
     ;; factor must be >= 1. = 65536/65536
-    return send_receipt_message(s_addr, 0xee6f454c, query_id, 6, 0, 64);
+    return send_receipt_message(s_addr, 0xee6f454c, query_id, 6, 0, 0, 64);
   }
   ;; All checks we can make locally
   
@@ -48,7 +48,7 @@
                 > 
                val_balance);
 
-  int op = 0x4e73744b; 
+  int op = op::elector::request::stake();
   int elector_query_id = new_query_id();
 
   send_through_proxy(
@@ -65,7 +65,7 @@
   (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
   save_data(_1, _2, val_balance, nom_balance, val_req, nom_req, _7, validator_cover_ability, front1, front2);
   int receipt_attachment = 10000000;
-  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
+  return send_receipt_message(s_addr, op | 0x80000000, query_id, 0, 0, receipt_attachment, 1);
 }
 
 () recover_stake (int msg_value, int query_id, tuple storage, slice s_addr) impure {
@@ -86,7 +86,7 @@
   (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
   save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
   int receipt_attachment = 10000000;
-  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, receipt_attachment, 1);
+  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, 0, receipt_attachment, 1);
 }
 
 ;; It is withdrawal of funds which formally is not owned by anybody
@@ -104,7 +104,7 @@
   throw_if(416, val_req | nom_req); 
   raw_reserve(val_balance + nom_balance, 0);
   raw_reserve(10000000000, 0); ;; Save at least 10 Toncoins for storage fees
-  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, amount, 1);
+  return send_receipt_message(s_addr, op + 0x00001000, query_id, 0, 0, amount, 1);
 }
 
 

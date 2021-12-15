@@ -1,4 +1,4 @@
-func -SPA stdlib.fc nonstdlib.fc error_codes.fc utils.fc message_utils.fc \
+func -SPA stdlib.fc nonstdlib.fc error_codes.fc op_codes.fc utils.fc message_utils.fc \
   validator-controller-utils/storage.fc \
   validator-controller-utils/config_utils.fc \
   validator-controller-utils/proxy_utils.fc \

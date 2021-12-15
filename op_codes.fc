@@ -1,0 +1,16 @@
+int op::bounce() asm "0xfffffffe PUSHINT";
+;; elector codes
+int op::elector::request::refund() asm "0x47657424 PUSHINT";
+int op::elector::response::refund() asm "0xf96f7324 PUSHINT";
+int op::elector::request::stake() asm "0x4e73744b PUSHINT";
+int op::elector::response::stake() asm "0xf96f7324 PUSHINT";
+int op::elector::response::stake::fail() asm "0xee6f454c PUSHINT";
+int op::elector::refund() asm "0x47657424 PUSHINT";
+;; int op::elector::refund() asm "0x47657424 PUSHINT";
+
+;; validator controller codes
+;; response == request & 0x80000000
+int op::validator::add_stake() asm "0xfeedc0de PUSHINT";
+int op::validator::withdraw() asm "0x0c0010ff PUSHINT";
+int op::validator::recover_stake() asm "0x47657424 PUSHINT";
+
