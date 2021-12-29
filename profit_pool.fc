@@ -1,0 +1,304 @@
+;; TLB Storage scheme
+;; user#_ active_amount:Grams paid_reward_per_coin:int48 = User;
+;; request#_ op:uint32 user:MsgAddressInt amount:Grams = Request;
+;; none#0 = State;
+;; processing_requests#1 = State;
+;; processing_withdrawals#2 = State;
+;; storage#_ profit_generator:MsgAddressInt
+;;           total_active:Grams 
+;;           reward_per_coin:int56       ;; NB! not "Grams" since can be negative
+;;           users:(PfxHashmapE MsgAddressInt User)
+;;           sent_requests:(HashmapE QueryId Request)
+;;           accepted_requests:(HashmapE LogicalTime Request)
+;;           batch_operations:State
+;;           unsent_amount:Grams
+;;           hanging_withdrawals:(HashmapE LogicalTime (MsgAddressInt Grams))
+
+
+{-
+   Profit pool sends requests immediately to profit generator
+   but doesn't process on acceptance. Instead it collects requests
+   and process it upon profit notifications.
+   Those request are add-stake and remove-stake requests.
+   Upon processing acceptance of add-stake requests user account
+   is topped up by corresponding amount.
+   Upon processing acceptance of remove-stake user account is decreased by
+   corresponding amount and withdrawal is added to hanging_withdrawals.
+   Upon receiving withdrawal from pool, hanging withdrawals are sent to
+   destinations.
+   For distribution of profits we use scheme when we account for reward_per_coin
+   at which previous action with user account were done and amount on the account
+   Upon getting profit/loss notification we update global reward_per_coin.
+   That allows to recalculate user account balance on demand without necessity
+   to recalculate it on each profit/loss. However this scheme ignores compounding.
+   That is accepted for now.
+   Note that queues of accepted_requests and hanging_withdrawals can be arbitrary
+   long. That means that we can not process it in one loop (blocks have gas limit)
+   instead we need to process them in chunks. During the whole processing execution 
+   should not be interrupted thus we need to introduce locks. Lock is set in 
+   batch_operations variable which can be 0 (no lock), 1 (processing requests),
+   2 (processing withdrawals). For requests which came during locked state we have
+   three options: bounce them with send-me-later op, collect them in internal queue and
+   collect them in block message queue. We chose third option and just resent 
+   request message to ourselves. It can possibly cause resending of each request happened
+   to reach contract during blocking operations for number of times equal to number 
+   of chunks. Not great, not terrible.
+-}
+
+
+int c7_len() asm "c7 PUSH" "TLEN";
+
+global int operating_balance;
+;; storage
+global slice profit_generator;
+global int total_active;
+global int reward_per_coin;
+global cell users;
+global cell sent_requests;
+global cell accepted_requests;
+global int batch_operations;
+global int unsent_amount;
+global cell hanging_withdrawals;
+
+int globals_inited?() inline {
+  ;; hanging_withdrawals is 10th global
+  return c7_len() > 9;
+}
+
+() load_data () inline {
+  if globals_inited?() {
+    return ();
+  }
+  var ds = get_data().begin_parse();
+  profit_generator = ds~load_msg_addr();
+  total_active = ds~load_grams();
+  reward_per_coin = ds~load_int(56);
+  users = ds~load_dict();
+  sent_requests = ds~load_dict();
+  accepted_requests = ds~load_dict();
+  batch_operations = ds~load_uint(4);
+  unsent_amount = ds~load_grams();
+  hanging_withdrawals = ds~load_dict();
+}
+
+() store_data () impure {
+   cell st = begin_cell()
+               .store_slice(profit_generator)
+               .store_grams(total_active).store_int(reward_per_coin, 56)
+               .store_dict(users).store_dict(sent_requests).store_dict(accepted_requests)
+               .store_uint(batch_operations, 4)
+               .store_grams(unsent_amount).store_dict(hanging_withdrawals)
+             .end_cell();
+   set_data(st);
+   commit();
+}
+
+
+int send_withdrawal(slice address, int amount) {
+  if((unsent_amount < amount) | (operating_balance < amount)) {
+    return 0;
+  }
+  send_signalling_message(address, op::pool::withdrawal(), cur_lt(), amount, 3);
+  unsent_amount -= amount;
+  operating_balance -= amount;
+  return -1;
+}
+
+() continue_withdrawals() impure {
+  load_data();
+  
+  batch_operations = 2;
+  int counter = 0;
+  int result? = 1;
+  while ((counter < 10) & result? & (~ hanging_withdrawals.cell_null?()) ) {
+    (cell hanging_withdrawals', int lt, slice data, int found?)  = hanging_withdrawals.udict::delete_get_min(64);
+    if (found?) {
+      (slice address, int amount) = (data~load_msg_addr(), data~load_grams());
+      result? = send_withdrawal(address, amount);
+      if(result?) {
+        hanging_withdrawals = hanging_withdrawals';
+        counter += 1;
+      } else {
+        counter += 10; ;;break
+      }
+    } else {
+      counter += 10; ;;break
+    }
+  }
+  if (~ hanging_withdrawals.cell_null?() & result?) {
+    ;; send continue_withdrawals TODO
+  } else {
+    batch_operations = 0;
+  }
+  store_data();
+  ;; send continue_process_requests ;; TODO
+}
+
+
+(cell,(int)) update_balance(cell accounts, slice user_id, int amount) {
+  (_, slice v, _, int found?) = accounts~pfxdict_del_get?(user_id.slice_bits(), user_id);
+  int active_amount = 0;
+  int withdraw_amount = 0;
+  if found? {
+    (active_amount, int paid_reward_per_coin) =  (v~load_grams(), v~load_int(48));
+    active_amount = (reward_per_coin - paid_reward_per_coin) * active_amount / 1000000000;
+  }
+  if (amount > 0) {
+    active_amount += amount;
+  } else {
+    withdraw_amount = active_amount;
+    active_amount = 0;
+  }
+  if active_amount {
+    accounts~pfxdict_set?(user_id.slice_bits(), user_id,
+                         begin_cell().store_grams(active_amount).store_int(reward_per_coin, 48).end_cell().begin_parse());
+  }
+  return (accounts, (withdraw_amount));
+}
+
+
+(cell,cell) process_accepted_request(cell accounts, cell withdrawals, int logic_time, slice request) {
+  int op = request~load_uint(32);
+  slice id = request~load_msg_addr();
+  int amount = request~load_grams();
+  if op == op::validator::add_stake() {
+    accounts~update_balance(id, amount);
+  }
+  if op == op::validator::withdraw() {
+    int withdraw_amount = accounts~update_balance(id, -1);
+    if withdraw_amount {
+      withdrawals~udict_set_builder(64, logic_time, begin_cell().store_slice(id).store_grams(amount));
+    }
+  }
+  return (accounts, withdrawals);
+}
+
+() continue_process_requests() impure {
+  load_data();
+  batch_operations = 1;
+  int counter = 0; ;; Process up to 100 requests in one transaction
+  while ((counter < 100) & (~ accepted_requests.cell_null?()) ) {
+    (cell accepted_requests', int logic_time, slice request, int found?)  = accepted_requests.udict::delete_get_min(64);
+    if found? {
+      var (users', hanging_withdrawals') = process_accepted_request(users, hanging_withdrawals, logic_time, request);
+      accepted_requests = accepted_requests';
+      users = users';
+      hanging_withdrawals = hanging_withdrawals';
+      counter += 1;
+    } else {
+      counter += 100;
+    }
+  }
+  if (~ accepted_requests.cell_null?()) {
+    ;; TODO send continue_process_requests
+  } else {
+    batch_operations = 0;
+  }  
+  store_data();
+}
+
+() on_profit_report (int pnl) impure {
+  load_data();
+  reward_per_coin = reward_per_coin + pnl * 1000000000 / total_active;
+  store_data();
+  continue_process_requests();
+}
+
+() postpone (int op, builder data) impure {
+  var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(my_address())
+    .store_grams(100000000)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(op, 32)
+    .store_builder(data);
+  send_raw_message(msg.end_cell(), 1);
+}
+
+
+() on_request_accept(slice in_msg) impure {
+  load_data();
+  int query_id = in_msg~load_uint(64);
+  if ~(batch_operations == 0) {
+    return postpone(op::pool::postpone_register_acceptance(), begin_cell().store_slice(in_msg));
+  }
+  (cell sent_requests', slice query, int found?) = sent_requests.udict_delete_get?(64, query_id);
+  if (~ found?) {
+    return ();
+  }
+  sent_requests = sent_requests';
+  (cell accepted_requests', int success?) = accepted_requests.udict_add?(64, cur_lt(), query);
+  throw_unless(777, success?); ;;TODO
+  accepted_requests' = accepted_requests;
+  store_data();
+}
+() on_withdrawal(int amount) impure {
+  load_data();
+  if ~(batch_operations == 0) {
+    return postpone(op::pool::postpone_withdrawal(), begin_cell().store_grams(amount));
+  }
+  unsent_amount += amount;
+  store_data();
+  continue_withdrawals();
+}
+
+() recv_external(slice in_msg) impure {
+  ;; do nothing for external messages
+}
+
+() self_control_operations (slice in_msg) {
+    accept_message();
+    int op = in_msg~load_uint(32);
+    if( op == op::pool::continue_witdrawals()) {
+      return continue_withdrawals();
+    }
+    if( op == op::pool::continue_process_requests()) {
+      return continue_process_requests();
+    }
+    if( op == op::pool::postpone_register_acceptance()) {
+      return on_request_accept(in_msg);
+    }
+    if( op == op::pool::postpone_withdrawal()) {
+      return on_withdrawal(in_msg~load_grams());
+    }  
+}
+
+() profit_generator_interaction(slice in_msg, int msg_value) {
+    accept_message();
+    int op = in_msg~load_uint(32);
+    if( op == op::nominator::notify()) {
+      (int pnl, int total) = (in_msg~load_int(80), in_msg~load_int(80));
+      return on_profit_report (pnl);
+    }
+    if ((op == (op::validator::withdraw() | 0x80000000)) | 
+        (op == (op::validator::add_stake() | 0x80000000)) ) {
+      return on_request_accept(in_msg);
+    }
+    if (op == op::validator::withdrawal()) {
+      return on_withdrawal(msg_value);
+    }
+}
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+  var cs = in_msg_cell.begin_parse();
+  var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  slice s_addr = cs~load_msg_addr();
+
+  if (flags & 1) {
+    ;; ignore all bounced messages
+    ;; TODO
+    return ();
+  }
+  slice ds = get_data().begin_parse();
+  if ( equal_slices(s_addr, my_address()) ) {
+    var t = get_balance();
+    operating_balance = t.pair_first() - 1000000000; ;; Keep 1 Coin for fees
+    return self_control_operations(in_msg);
+  }
+  profit_generator = ds~load_msg_addr();
+  if ( equal_slices(s_addr, profit_generator) ) {
+    return profit_generator_interaction(in_msg, msg_value);
+  }
+  ;; Shareholder commands
+}
+

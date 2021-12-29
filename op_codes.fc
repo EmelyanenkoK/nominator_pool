@@ -9,8 +9,19 @@ int op::elector::refund() asm "0x47657424 PUSHINT";
 ;; int op::elector::refund() asm "0x47657424 PUSHINT";
 
 ;; validator controller codes
-;; response == request & 0x80000000
+;; response == request | 0x80000000
 int op::validator::add_stake() asm "0xfeedc0de PUSHINT";
 int op::validator::withdraw() asm "0x0c0010ff PUSHINT";
 int op::validator::recover_stake() asm "0x47657424 PUSHINT";
+int op::nominator::notify() asm "0x75706474 PUSHINT";
 
+;; withdrawal != withdraw: first one is message with money
+;; second one is related to withdrawal request
+int op::validator::withdrawal() asm "0x77746864 PUSHINT";
+
+;; profit pool codes
+int op::pool::continue_witdrawals() asm "0x3 PUSHINT";
+int op::pool::continue_process_requests() asm "0x4 PUSHINT";
+int op::pool::postpone_register_acceptance() asm "0x5 PUSHINT";
+int op::pool::postpone_withdrawal() asm "0x6 PUSHINT";
+int op::pool::withdrawal() asm "0x7 PUSHINT";

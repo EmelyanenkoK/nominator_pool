@@ -24,11 +24,11 @@ Otherwise, upon misbehavior Validator gets fined, that is loses toncoins. Contro
 That being said, the purpose of nominator pool smartcontract is to minimize possible ways of Validator misbehavior, 
 by checking (where it is possible) messages sent to elector smartcontract and authorizing where and how much TON coins can be sent.
 ## Functionality
-### Validator
+### Validator' functions
 This contract allows the Validator to participate in elections on behalf of his and nominator' stake and being 
 elected to vote for complaints and network config updates. It also allows the 
 Validator to refund stake from previous elections and distribute reward to himself and nominators.
-### Nominator
+### Nominator' functions
 This contract allows nominator to add stake to the pool as well as request withdrawals. 
 It also allows nominators to request a refund from the elector smartcontract in case of the Validator's unresponsiveness.
 

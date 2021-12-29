@@ -1,7 +1,7 @@
 
 () notify_nominator (slice addr, int pnl, int total, int value) impure {
     return send_message( addr, value,
-                  begin_cell().store_uint(0x75706474, 32).store_int(pnl, 80).store_int(total,80).end_cell(), 1);
+                  begin_cell().store_uint(op::nominator::notify(), 32).store_int(pnl, 80).store_int(total,80).end_cell(), 1);
 }
 
 ((int, int), ()) ~consider_withdrawal_requests((int, int) requests, slice validator, slice nominator, int val_balance, int nom_balance) {
@@ -10,12 +10,12 @@
     val_request = min(val_request, val_balance);
     nom_request = min(nom_request, nom_balance);
     if((nom_request > fees::withdraw()) & (nom_request <= me)) {
-      send_message(nominator, nom_request - fees::withdraw(), begin_cell().store_uint(0x77746864, 32).end_cell(), 0);
+      send_message(nominator, nom_request - fees::withdraw(), begin_cell().store_uint(op::validator::withdrawal(), 32).end_cell(), 0);
       me -= nom_request;
       nom_request = 0;
     }
     if( (~ (nom_request > fees::withdraw())) & (val_request > fees::withdraw()) & (val_request <= me)) {
-      send_message(validator, val_request - fees::withdraw(), begin_cell().store_uint(0x77746864, 32).end_cell(), 0);
+      send_message(validator, val_request - fees::withdraw(), begin_cell().store_uint(op::validator::withdrawal(), 32).end_cell(), 0);
       val_request = 0;
     }
     return ((val_request, nom_request), ());
