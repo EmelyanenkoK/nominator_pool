@@ -136,7 +136,8 @@ int send_withdrawal(slice address, int amount) {
 
 
 (cell,(int)) update_balance(cell accounts, slice user_id, int amount) {
-  (_, slice v, _, int found?) = accounts~pfxdict_del_get?(user_id.slice_bits(), user_id);
+  ;; there is no pfxdict_del_get code so, doing that in two steps
+  (_, slice v, _, int found?) = accounts.pfxdict_get?(user_id.slice_bits(), user_id);
   int active_amount = 0;
   int withdraw_amount = 0;
   if found? {
@@ -150,8 +151,12 @@ int send_withdrawal(slice address, int amount) {
     active_amount = 0;
   }
   if active_amount {
-    accounts~pfxdict_set?(user_id.slice_bits(), user_id,
+    (accounts, int success?) = accounts.pfxdict_set?(user_id.slice_bits(), user_id,
                          begin_cell().store_grams(active_amount).store_int(reward_per_coin, 48).end_cell().begin_parse());
+  } else {
+    if found? {
+      (accounts, int success?) = accounts.pfxdict_delete?(user_id.slice_bits(), user_id);
+    }
   }
   return (accounts, (withdraw_amount));
 }
@@ -301,4 +306,5 @@ int send_withdrawal(slice address, int amount) {
   }
   ;; Shareholder commands
 }
+
 
