@@ -1,4 +1,9 @@
-func -SPA ../stdlib.fc ../nonstdlib.fc ../error_codes.fc ../op_codes.fc ../utils.fc ../message_utils.fc \
+func -SPA ../common/stdlib.fc \
+          ../common/nonstdlib.fc \
+          ../common/error_codes.fc \
+          ../common/op_codes.fc \
+          ../common/utils.fc \
+          ../common/message_utils.fc \
   fees.fc \
   storage.fc \
   config_utils.fc \
