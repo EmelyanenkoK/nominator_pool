@@ -12,4 +12,23 @@ func -SPA ../common/stdlib.fc \
   nominator_requests.fc \
   balances.fc \
   elector_response.fc \
+  get_methods.fc \
   controller.fc -o ../build/validator-controller-code.fif
+
+func -SPA ../common/stdlib.fc \
+          ../common/nonstdlib.fc \
+          ../common/error_codes.fc \
+          ../common/op_codes.fc \
+          ../common/utils.fc \
+          ../common/message_utils.fc \
+          ../mocks/config_utils.fc \
+  fees.fc \
+  storage.fc \
+  proxy_utils.fc \
+  validator_requests.fc \
+  nominator_requests.fc \
+  balances.fc \
+  elector_response.fc \
+  get_methods.fc \
+  controller.fc -o ../build/mocked-controller-code.fif
+

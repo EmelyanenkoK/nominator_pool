@@ -1,0 +1,18 @@
+
+slice elector_const() asm "mocked_elector PUSHSLICE";
+
+(slice) elector_address() inline {
+    var elector = config_param(1).begin_parse().preload_uint(256);
+    return begin_cell()
+           .store_slice(elector_const())
+           .end_cell()
+           .begin_parse();
+}
+
+(int, int, int) stake_lock_durations() inline {
+    return (0, 0, 0);
+}
+
+(int) max_recommended_punishment_for_validator_misbehaviour(int stake) inline {
+    return 0;
+}

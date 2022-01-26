@@ -11,7 +11,6 @@
   var cs = in_msg_cell.begin_parse();
   var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
   slice s_addr = cs~load_msg_addr();
-  slice elector = elector_address();
 
   int processed? = 0;
 
