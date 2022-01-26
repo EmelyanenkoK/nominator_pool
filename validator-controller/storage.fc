@@ -99,7 +99,7 @@ cell serialize_front(slice addr, int last_stake_sent, int stake_on_elector, buil
 }
 
 int is_init() inline {
-  return get_data().begin_parse().slice_refs() == 2;
+  return get_data().begin_parse().slice_refs() == 4;
 }
 
 () init_fronts(slice addr1, slice addr2) impure {
