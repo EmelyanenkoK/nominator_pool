@@ -1,0 +1,10 @@
+func -SPA ../stdlib.fc ../nonstdlib.fc ../error_codes.fc ../op_codes.fc ../utils.fc ../message_utils.fc \
+  fees.fc \
+  storage.fc \
+  config_utils.fc \
+  proxy_utils.fc \
+  validator_requests.fc \
+  nominator_requests.fc \
+  balances.fc \
+  elector_response.fc \
+  controller.fc -o validator-controller-code.fif
