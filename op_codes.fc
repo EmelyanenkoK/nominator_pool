@@ -25,3 +25,6 @@ int op::pool::continue_process_requests() asm "0x4 PUSHINT";
 int op::pool::postpone_register_acceptance() asm "0x5 PUSHINT";
 int op::pool::postpone_withdrawal() asm "0x6 PUSHINT";
 int op::pool::withdrawal() asm "0x7 PUSHINT";
+int op::pool::send_stake() asm "0x8 PUSHINT";
+int op::pool::withdraw() asm "0x9 PUSHINT";
+int op::pool::force_action() asm "0xA PUSHINT";

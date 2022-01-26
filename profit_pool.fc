@@ -139,15 +139,16 @@ int send_withdrawal(slice address, int amount) {
   ;; there is no pfxdict_del_get code so, doing that in two steps
   (_, slice v, _, int found?) = accounts.pfxdict_get?(user_id.slice_bits(), user_id);
   int active_amount = 0;
-  int withdraw_amount = 0;
+  int return_amount = 0;
   if found? {
     (active_amount, int paid_reward_per_coin) =  (v~load_grams(), v~load_int(48));
     active_amount = (reward_per_coin - paid_reward_per_coin) * active_amount / 1000000000;
   }
   if (amount > 0) {
     active_amount += amount;
+    return_amount = active_amount;
   } else {
-    withdraw_amount = active_amount;
+    return_amount = active_amount;
     active_amount = 0;
   }
   if active_amount {
@@ -158,7 +159,7 @@ int send_withdrawal(slice address, int amount) {
       (accounts, int success?) = accounts.pfxdict_delete?(user_id.slice_bits(), user_id);
     }
   }
-  return (accounts, (withdraw_amount));
+  return (accounts, (return_amount));
 }
 
 
@@ -284,6 +285,46 @@ int send_withdrawal(slice address, int amount) {
     }
 }
 
+() request_withdraw_stake (slice user_id, int query_id) {
+  load_data();
+  int current_amount = users~update_balance(user_id, 0);
+  throw_unless(err::unauthorized_request(), current_amount > 0); ;; TODO > fee
+  (sent_requests, int success?) = sent_requests.udict_add_builder?(64, query_id,
+    begin_cell().store_uint(op::validator::withdraw(),32)
+                .store_slice(s_addr)
+                .store_grams(current_amount); ;; TODO
+  throw_unless(err::query_id_conflict(), success?);
+  ;; TODO send_actual_request
+}
+
+(int) process_shareholder_request (slice in_msg, int msg_value, slice s_addr) impure {
+  int query_id = 0;
+  int op = in_msg~load_uint(32);
+  throw_unless(112, msg_value > 1000000000);
+  if ( ~ op ) {
+    op = in_msg~parse_text_command();
+    query_id = cur_lt();
+  } else {
+    query_id = in_msg~load_uint(64);
+  }
+  if (op == op::pool::send_stake() ) {
+    ;; put stake into pool
+    request_add_stake(s_addr, msg_value, query_id);
+    return true;
+  }
+  if (op == op::pool::withdraw() ) {
+    request_withdraw(s_addr, query_id);
+    return true;
+  }
+  if (op == op::pool::force_action()) {
+    ;; validator's function allowed for nominators
+    throw_unless(112, msg_value > 1000000000);
+    recover_stake(msg_value, query_id, storage, s_addr);
+    return true;
+  }
+  return false;
+}
+
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
   var cs = in_msg_cell.begin_parse();
   var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
@@ -305,6 +346,7 @@ int send_withdrawal(slice address, int amount) {
     return profit_generator_interaction(in_msg, msg_value);
   }
   ;; Shareholder commands
+  return process_shareholder_request();
 }
 
 

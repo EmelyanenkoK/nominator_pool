@@ -1,15 +1,16 @@
-int err::insufficient_fee_prefix() asm "312 PUSHINT";
+int err::insufficient_fee_prefix() asm "402 PUSHINT";
 int err::insufficient_fee(int id) { return (id << 16) + err::insufficient_fee_prefix(); }
-int err::no_suitable_proxy() asm "415 PUSHINT";
+int err::no_suitable_proxy() asm "407 PUSHINT";
 int err::unprocessed_withdrawal_requests() asm "416 PUSHINT";
 int err::validation_amount_too_high() asm "417 PUSHINT";
 int err::cover_ability_violation() asm "473 PUSHINT";
 
 
-int err::unknown_request() asm "404 PUSHINT";
-int err::unauthorized_request() asm "205 PUSHINT";
-int err::unknown_response() asm "201 PUSHINT";
+int err::unknown_request() asm "405 PUSHINT";
+int err::unauthorized_request() asm "401 PUSHINT";
+int err::unknown_response() asm "400 PUSHINT";
 
 ;; text_utils
 int err::unknown_text_command() asm "505 PUSHINT";
 
+int err::query_id_conflict() asm "409 PUSHINT";
