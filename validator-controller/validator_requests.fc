@@ -10,7 +10,7 @@
   slice proxy_address = in_msg~load_msg_addr();
   slice cs = in_msg;
   ;; Stake checks borrowed from https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L208
-  (int pool_wc, int pool_addr) = parse_std_addr(my_address());
+  (_, int proxy_addr) = parse_std_addr(proxy_address);
   var validator_pubkey = cs~load_uint(256);
   var stake_at = cs~load_uint(32);
   var max_factor = cs~load_uint(32);
@@ -21,7 +21,7 @@
       .store_uint(0x654c5074, 32)
       .store_uint(stake_at, 32)
       .store_uint(max_factor, 32)
-      .store_uint(pool_addr, 256)
+      .store_uint(proxy_addr, 256)
       .store_uint(adnl_addr, 256)
     .end_cell().begin_parse(), signature, validator_pubkey)) {
     ;; incorrect signature
