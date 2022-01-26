@@ -9,7 +9,7 @@
     nom_balance += stake;
   }
   save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10);
-  return send_receipt_message(s_addr, op::validator::add_stake() | 0x80000000, query_id, 1, 32, fees::receipt(), 1);
+  return send_receipt_message(s_addr, op::nominator::add_stake() | 0x80000000, query_id, 1, 32, fees::receipt(), 1);
 }
 
 
@@ -33,24 +33,24 @@
 
   }
   save_data(_1, _2, val_balance, nom_balance, val_request, nom_request, _7, _8, _9, _10);
-  return send_receipt_message(s_addr, op::validator::withdraw() | 0x80000000, query_id, 0, 0, 0, 64);
+  return send_receipt_message(s_addr, op::nominator::withdraw() | 0x80000000, query_id, 0, 0, 0, 64);
 }
 
 (int) process_nominator_request (slice in_msg, int msg_value, tuple storage, slice s_addr, int is_validator?) impure {
   int op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
 
-  if (op == op::validator::add_stake() ) {
+  if (op == op::nominator::add_stake() ) {
     ;; put stake into pool
     add_stake(s_addr, msg_value, storage, query_id, is_validator?);
     return true;
   }
-  if (op == op::validator::withdraw() ) {
+  if (op == op::nominator::withdraw() ) {
     int amount = in_msg~load_grams();
     request_withdrawal(s_addr, storage, query_id, amount, is_validator?);
     return true;
   }
-  if (op == op::validator::recover_stake()) {
+  if (op == op::nominator::recover_stake()) {
     ;; validator's function allowed for nominators
     ;; throw_unless(err::insufficient_fee(0), msg_value > 1000000000);
     recover_stake(msg_value, query_id, storage, s_addr, in_msg);

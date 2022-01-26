@@ -120,17 +120,17 @@
   }
   int query_id = in_msg~load_uint(64);
 
-  if (op == 0x4e73744b) {
+  if (op == op::validator::send_stake()) {
     ;; new stake message
     send_new_stake(msg_value, query_id, storage, s_addr, in_msg);
     return true;
   }
-  if (op == 0x47657424) {
+  if (op == op::validator::recover_stake()) {
     ;; recover stake request
     recover_stake(msg_value, query_id, storage, s_addr, in_msg); ;;(op, s_addr, in_msg, query_id);
     return true;
   }
-  if (op == 0x006e7bac) {
+  if (op == op::validator::withdraw_unaccounted()) {
     validator_withdraw(in_msg, msg_value, query_id, storage, s_addr);
     return true;
   }
