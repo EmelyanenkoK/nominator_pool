@@ -6,31 +6,20 @@
   return other_queries_ok? & stake_round_ok?;
 }
 
-(slice, int, int, slice, int, int) choose_proxy (cell front1, cell front2) {
-  (slice front_addr, int last_stake_sent, int stake_on_elector, slice on_fly_query) = deserialize_front(front1);
-  int second_proxy? = 0;
-  if ~(can_send_next_request(last_stake_sent, on_fly_query)) {
-    (front_addr, last_stake_sent, stake_on_elector, on_fly_query) = deserialize_front(front2);
-    second_proxy? = -1;
-  }
-  return (front_addr, last_stake_sent, stake_on_elector, on_fly_query, second_proxy?,
-          can_send_next_request(last_stake_sent, on_fly_query));
-}
-
 (slice, int, int, slice, int,  int) choose_proxy_by_address(cell front1, cell front2, slice addr) {
   (slice front_addr, int last_stake_sent, int stake_on_elector, slice on_fly_query) = deserialize_front(front1);
-  int second_proxy? = 0;
+  int proxy_id = 0;
   if ~ equal_slices(front_addr, addr) {
     (front_addr, last_stake_sent, stake_on_elector, on_fly_query) = deserialize_front(front2);
-    int second_proxy? = -1;
+    int proxy_id = -1;
   }
-  return (front_addr, last_stake_sent, stake_on_elector, on_fly_query, second_proxy?, equal_slices(front_addr, addr));
+  return (front_addr, last_stake_sent, stake_on_elector, on_fly_query, proxy_id, equal_slices(front_addr, addr));
 }
 
-((cell, cell), ()) ~update_proxies ((cell, cell) fronts, slice front_addr, int last_stake_sent, int stake_on_elector, builder on_fly_query, int second_proxy?) {
+((cell, cell), ()) ~update_proxies ((cell, cell) fronts, slice front_addr, int last_stake_sent, int stake_on_elector, builder on_fly_query, int proxy_id) {
   (cell front1, cell front2) = fronts;
   cell front = serialize_front(front_addr, last_stake_sent, stake_on_elector, on_fly_query);
-  if(second_proxy?) {
+  if(proxy_id) {
     return ((front1, front), ());
   } else {
     return ((front, front2),());

@@ -7,6 +7,7 @@
 () send_new_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
   msg_value = subtract_standart_fee(msg_value, 1);
   int amount = in_msg~load_grams();
+  slice proxy_address = in_msg~load_msg_addr();
   slice cs = in_msg;
   ;; Stake checks borrowed from https://github.com/newton-blockchain/ton/blob/master/crypto/smartcont/elector-code.fc#L208
   (int pool_wc, int pool_addr) = parse_std_addr(my_address());
@@ -38,14 +39,16 @@
    int _7, 
    int validator_cover_ability,
    cell front1, cell front2) = storage_untuple(storage);
-  (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
-  throw_unless(err::no_suitable_proxy(), chosen?);
+  (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy_by_address(front1, front2, proxy_address);
+  throw_unless(err::no_suitable_proxy(), 
+               chosen? & 
+               can_send_next_request(last_stake_request, on_fly_query));
   throw_if(err::unprocessed_withdrawal_requests(), val_req | nom_req);
   throw_unless(err::validation_amount_too_high(), amount <= val_balance + nom_balance);
   throw_if(err::cover_ability_violation(), 
-               max_recommended_punishment_for_validator_misbehaviour(amount) * validator_cover_ability >> 16
-                > 
-               val_balance);
+           max_recommended_punishment_for_validator_misbehaviour(amount) * validator_cover_ability >> 16
+            > 
+           val_balance);
 
   int op = op::elector::request::stake();
   int elector_query_id = new_query_id();
@@ -65,14 +68,17 @@
   save_data(_1, _2, val_balance, nom_balance, val_req, nom_req, _7, validator_cover_ability, front1, front2);
 }
 
-() recover_stake (int msg_value, int query_id, tuple storage, slice s_addr) impure {
+() recover_stake (int msg_value, int query_id, tuple storage, slice s_addr, slice in_msg) impure {
+  slice proxy_address = in_msg~load_msg_addr();
   msg_value = subtract_standart_fee(msg_value, 2);
   int elector_query_id = new_query_id();
   int op = 0x47657424;
   (slice _1, slice _2, int _3, int _4, int _5, int _6, int _7, int _8,
    cell front1, cell front2) = storage_untuple(storage);
-  (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy(front1, front2);
-  throw_unless(err::no_suitable_proxy(), chosen?);
+  (slice front_addr, int last_stake_request, int stake_on_elector, slice on_fly_query, int proxy_id, int chosen?) = choose_proxy_by_address(front1, front2, proxy_address);
+  throw_unless(err::no_suitable_proxy(), 
+               chosen? & 
+               can_send_next_request(last_stake_request, on_fly_query));
   send_through_proxy(front_addr,
                fees::elector(),
                begin_cell()
@@ -121,7 +127,7 @@
   }
   if (op == 0x47657424) {
     ;; recover stake request
-    recover_stake(msg_value, query_id, storage, s_addr); ;;(op, s_addr, in_msg, query_id);
+    recover_stake(msg_value, query_id, storage, s_addr, in_msg); ;;(op, s_addr, in_msg, query_id);
     return true;
   }
   if (op == 0x006e7bac) {

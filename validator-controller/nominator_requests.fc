@@ -53,7 +53,7 @@
   if (op == op::validator::recover_stake()) {
     ;; validator's function allowed for nominators
     ;; throw_unless(err::insufficient_fee(0), msg_value > 1000000000);
-    recover_stake(msg_value, query_id, storage, s_addr);
+    recover_stake(msg_value, query_id, storage, s_addr, in_msg);
     return true;
   }
   return false;
