@@ -1,4 +1,4 @@
-(slice) elector_address() {
+(slice) elector_address() inline {
     var elector = config_param(1).begin_parse().preload_uint(256);
     return begin_cell()
            .store_uint(4, 3).store_uint(0xff, 8).store_uint(elector, 256)
@@ -6,7 +6,7 @@
            .begin_parse();
 }
 
-(int, int, int) stake_lock_durations() {
+(int, int, int) stake_lock_durations() inline {
     slice validation_params = config_param(15).begin_parse();
     int validators_elected_for = validation_params~load_uint(32);
     validation_params~load_bits(64);
@@ -17,7 +17,7 @@
     return (validators_elected_for, stake_held_for, utime_since);
 }
 
-(int) max_recommended_punishment_for_validator_misbehaviour(int stake) {
+(int) max_recommended_punishment_for_validator_misbehaviour(int stake) inline {
     slice recommendation = config_param(40).begin_parse();
     (int _1,
      int flat_fine, int prop_fine,

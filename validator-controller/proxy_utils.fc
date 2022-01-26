@@ -26,13 +26,18 @@
   }
 }
 
-() send_through_proxy(slice proxy, int amount, cell body) impure inline_ref {
+() send_through_proxy(slice proxy, int amount, builder body) impure inline_ref {
   var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(proxy)
     .store_grams(amount)
-    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-    .store_slice(elector_address())
-    .store_ref(body);
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1);
+    if(msg.builder_bits() + 1 + body.builder_bits() > 1023) {
+        msg = msg.store_uint(1,1)
+                 .store_ref(body.end_cell());
+    } else {
+        msg = msg.store_uint(0,1)
+                 .store_builder(body);
+    }
   send_raw_message(msg.end_cell(), 1);
 }

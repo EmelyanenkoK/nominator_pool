@@ -60,7 +60,7 @@
                            .store_uint(op, 32)
                            .store_uint(elector_query_id, 64)
                            .store_slice(in_msg)
-               .end_cell());
+               );
   builder qry = serialize_query(op, now(), query_id, msg_value, s_addr);
   last_stake_request = now(); ;; write time immediately, remove on error on elector side
   stake_on_elector += amount;
@@ -80,11 +80,10 @@
                chosen? & 
                can_send_next_request(last_stake_request, on_fly_query));
   send_through_proxy(front_addr,
-               fees::elector(),
-               begin_cell()
-                           .store_uint(op, 32)
-                           .store_uint(elector_query_id, 64)
-               .end_cell() );
+                     fees::elector(),
+                     begin_cell()
+                                 .store_uint(op, 32)
+                                 .store_uint(elector_query_id, 64));
   builder qry = serialize_query(op, now(), query_id, msg_value, s_addr);
   (front1, front2)~update_proxies(front_addr, last_stake_request, stake_on_elector, qry, proxy_id);
   save_data(_1, _2, _3, _4, _5, _6, _7, _8, front1, front2);
@@ -104,7 +103,7 @@
   int op = 0x006e7bac;
   throw_if(416, val_req | nom_req); 
   raw_reserve(val_balance + nom_balance, 0);
-  raw_reserve(fees::storage_reserve(), 0); ;; Save at least 10 Toncoins for storage fees
+  raw_reserve(fees::storage_reserve(), 0);
   return send_receipt_message(s_addr, op | 0x80000000, query_id, 0, 0, amount, 1);
 }
 
