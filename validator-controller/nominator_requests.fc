@@ -1,14 +1,15 @@
 () add_stake (slice s_addr, int msg_value, tuple storage, int query_id, int is_validator?) impure {
-  (slice _1, slice _2, 
+  (slice _1, slice nominator_addr,
    int val_balance, int nom_balance,
    int _5, int _6, int _7, int _8, cell _9, cell _10) = storage_untuple(storage);
   int stake = msg_value - fees::deposit() - fees::receipt();
+  stake = max(0, stake);
   if (is_validator?) {
     val_balance += stake;
   } else {
     nom_balance += stake;
   }
-  save_data(_1, _2, val_balance, nom_balance, _5, _6, _7, _8, _9, _10);
+  save_data(_1, nominator_addr, val_balance, nom_balance, _5, _6, _7, _8, _9, _10);
   return send_receipt_message(s_addr, op::nominator::add_stake() | 0x80000000, query_id, 1, 32, fees::receipt(), 1);
 }
 
@@ -40,6 +41,10 @@
   int op = in_msg~load_uint(32);
   int query_id = in_msg~load_uint(64);
 
+  throw_unless(err::unauthorized_request(), 
+                 equal_slices(s_addr, storage.second()) |
+                 equal_slices(s_addr, storage.first() )
+                 );
   if (op == op::nominator::add_stake() ) {
     ;; put stake into pool
     add_stake(s_addr, msg_value, storage, query_id, is_validator?);
