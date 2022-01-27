@@ -1,0 +1,80 @@
+() send_message_back(addr, ans_tag, query_id, body, grams, mode) impure inline_ref {
+  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+  var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(addr)
+    .store_grams(grams)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(ans_tag, 32)
+    .store_uint(query_id, 64);
+  if (body >= 0) {
+    msg~store_uint(body, 32);
+  }
+  send_raw_message(msg.end_cell(), mode);
+}
+
+() return_stake(addr, query_id, reason) impure inline_ref {
+  return send_message_back(addr, 0xee6f454c, query_id, reason, 0, 64);
+}
+
+() send_confirmation(addr, query_id, comment) impure inline_ref {
+  return send_message_back(addr, 0xf374484c, query_id, comment, 1000000000, 2);
+}
+
+() recover_stake(op, s_addr, cs, query_id) impure inline_ref {
+  int selector = (query_id % 3);
+  if (selector == 0) {
+    return send_message_back(s_addr, 0xfffffffe, query_id, op, 0, 64);
+  }
+  var ds = get_data().begin_parse();
+  var amount = ds~load_grams();
+  
+  if (selector == 1) {
+    amount = amount * 9 / 10;
+  }
+
+  if (selector == 2) {
+    amount = amount * 10 / 9;
+  }
+  send_raw_message(begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(s_addr)
+    .store_grams(amount)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(0xf96f7324, 32)
+    .store_uint(query_id, 64)
+  .end_cell(), 64);
+}
+
+
+() process_new_stake (s_addr, msg_value, in_msg, query_id) impure inline_ref {
+  ;; elector may return stake with reason 0,1,2,3,4,5,6;
+  int selector = (query_id % 10);
+  if (selector < 7 ) {
+    return return_stake(s_addr, query_id, selector);
+  }
+  throw_if(44, selector > 8);
+  set_data(begin_cell().store_grams(msg_value).end_cell());
+  return send_confirmation(s_addr, query_id, 0);
+}
+
+
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+  var cs = in_msg_cell.begin_parse();
+  var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  if (flags & 1) {
+    ;; ignore all bounced messages
+    return ();
+  }
+  var s_addr = cs~load_msg_addr();
+  int op = in_msg~load_uint(32);
+  int query_id = in_msg~load_uint(64);
+  if (op == 0x4e73744b) {
+    return process_new_stake(s_addr, msg_value, in_msg, query_id);
+  }
+  if (op == 0x47657424) {
+    ;; recover stake request
+    return recover_stake(op, s_addr, in_msg, query_id);
+  }
+}

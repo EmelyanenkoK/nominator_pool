@@ -3,7 +3,7 @@ int fees::stake_operation() asm "50000000 PUSHINT";
 int fees::receipt() asm "10000000 PUSHINT";
 int fees::storage_reserve() asm "10000000000 PUSHINT";
 
-int fees::deposit() asm "20000000 PUSHINT";
+int fees::deposit() asm "20000000 PUSHINT"; ;; TODO may be zero ???
 int fees::withdraw() asm "20000000 PUSHINT";
 
 int fees::profit_notification() asm "200000000 PUSHINT";
