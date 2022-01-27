@@ -1,0 +1,115 @@
+"Asm.fif" include
+"TonUtil.fif" include
+"GetOpt.fif" include
+
+{ show-options-help 1 halt } : usage
+
+begin-options
+     "<validator-address> <nominator-address> <validator_reward_share> <validator_cover_ability>" +cr +tab
+    +"Creates a queries to deploy mocked validator controller with two proxies"  +cr +tab
+    +"which redirect requests to <mock-elector-address>"  +cr +tab
+    +"The query  will be saved into 'mock-controller.boc', 'mock-proxy1.boc', 'mock-proxy2.boc' "
+    disable-digit-options generic-help-setopt
+  "h" "--help" { usage } short-long-option
+    "Shows a help message" option-help
+parse-options
+
+$# dup 4 < swap 4 > or ' usage if
+4 :$1..n
+
+$1 $>smca not abort"Expect validator address" drop 2=: val_addr
+$2 $>smca not abort"Expect nominator address" drop 2=: nom_addr
+$3 parse-int =: validator_reward_share
+$4 parse-int =: validator_cover_ability
+
+
+// Mocked elector
+
+<{
+  SETCP0 ACCEPT
+  "../build/mocked-elector-code.fif" include PUSHREF SETCODE
+}>s =: elector_code
+
+<b now 32 u, b> =: elector_storage
+0 =: wc
+<b b{00110} s, <b elector_code s, b> ref, elector_storage ref, b>
+dup =: elector_state_init
+dup hashu wc swap 2constant mock_elector_addr
+."Mocked elector address = " mock_elector_addr .addr cr
+
+<b b{1000100} s, mock_elector_addr addr, b{000010} s, elector_state_init <s s, b{0} s, b> =: elector-query
+
+<b b{100} s, mock_elector_addr addr, b> <s =: mocked_elector
+
+// Controller
+
+<b b> <s =: mocked_elector
+"../build/mocked-controller-code.fif" include <s =: controler_code
+
+<b 
+  <b b{100} s, val_addr addr, 0 Gram, 0 Gram, b> ref,
+  <b b{100} s, nom_addr addr, 0 Gram, 0 Gram, b> ref,
+  validator_reward_share 16 u,
+  validator_cover_ability 16 u,
+b> =: controller_storage
+
+
+0 =: wc
+
+<b b{00110} s, <b controler_code s, b> ref, controller_storage ref, b>
+dup =: controller_state_init
+dup hashu wc swap 2constant controller_addr
+."Controller address = " controller_addr .addr cr
+
+// Proxy
+
+<{
+  SETCP0 ACCEPT
+  "../build/proxy-code.fif" include PUSHREF SETCODE
+}>s =: proxy_code
+
+<b 
+  now 32 u, 1 32 u,
+  b{100} s, controller_addr addr,
+b> =: proxy1_storage
+
+<b 
+  now 32 u, 2 32 u,
+  b{100} s, controller_addr addr,
+b> =: proxy2_storage
+
+-1 =: wc
+
+<b b{00110} s, <b proxy_code s, b> ref, proxy1_storage ref, b>
+dup =: proxy1_state_init
+dup hashu wc swap 2constant proxy1_addr
+."Proxy 1 address = " proxy1_addr .addr cr
+
+<b b{00110} s, <b proxy_code s, b> ref, proxy2_storage ref, b>
+dup =: proxy2_state_init
+dup hashu wc swap 2constant proxy2_addr
+."Proxy 2 address = " proxy2_addr .addr cr
+
+<b b{1000100} s, proxy1_addr addr, b{000010} s, proxy1_state_init <s s, b{0} s, b>
+2 boc+>B
+"mock-proxy1.boc" tuck B>file
+."(Saved controller creating query to file " type .")" cr
+
+<b b{1000100} s, proxy2_addr addr, b{000010} s, proxy2_state_init <s s, b{0} s, b>
+2 boc+>B
+"mock-proxy2.boc" tuck B>file
+."(Saved controller creating query to file " type .")" cr
+
+// Controller deploy
+
+
+<b b{100} s, proxy1_addr addr, b{100} s, proxy2_addr addr, b> =: controller_init_message
+<b b{1000100} s, controller_addr addr, b{000010} s, controller_state_init <s s, b{0} s, controller_init_message <s s, b>
+2 boc+>B
+"mock-controller.boc" tuck B>file
+."(Saved controller creating query to file " type .")" cr
+
+
+elector-query 2 boc+>B
+"mock-elector.boc" tuck B>file
+."(Saved controller creating query to file " type .")" cr

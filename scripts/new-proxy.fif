@@ -1,0 +1,32 @@
+"Asm.fif" include
+"TonUtil.fif" include
+"GetOpt.fif" include
+
+1 :$1..n
+
+$1 $>smca not abort"Expect some address" drop 2=: contract_address
+
+// Proxy
+
+<{
+  SETCP0 ACCEPT
+  "../build/proxy-code.fif" include PUSHREF SETCODE
+}>s =: proxy_code
+
+<b 
+  now 32 u, 1 32 u,
+  b{100} s, contract_address addr,
+b> =: proxy1_storage
+
+-1 =: wc
+
+<b b{00110} s, <b proxy_code s, b> ref, proxy1_storage ref, b>
+dup =: proxy1_state_init
+dup hashu wc swap 2constant proxy1_addr
+."Proxy 1 address = " proxy1_addr .addr cr
+
+<b b{1000100} s, proxy1_addr addr, b{000010} s, proxy1_state_init <s s, b{0} s, b>
+2 boc+>B
+"new-proxy1.boc" tuck B>file
+."(Saved controller creating query to file " type .")" cr
+
