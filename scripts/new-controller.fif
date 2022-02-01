@@ -5,7 +5,7 @@
 { show-options-help 1 halt } : usage
 
 begin-options
-     "<validator-address> <nominator-address> <validator_reward_share> <validator_cover_ability>" +cr +tab
+     "<validator-address> <nominator-address> <validator_reward_share> <validator_cover_ability> [<file_prefix>]" +cr +tab
     +"Creates a queries to deploy validator controller with two proxies"  +cr +tab
     +"The query  will be saved into 'new-controller.boc', 'new-proxy1.boc', 'new-proxy2.boc' "
     disable-digit-options generic-help-setopt
@@ -13,13 +13,14 @@ begin-options
     "Shows a help message" option-help
 parse-options
 
-$# dup 4 < swap 4 > or ' usage if
+$# dup 5 < swap 5 > or ' usage if
 5 :$1..n
 
 $1 $>smca not abort"Expect validator address" drop 2=: val_addr
 $2 $>smca not abort"Expect nominator address" drop 2=: nom_addr
 $3 parse-int =: validator_reward_share
 $4 parse-int =: validator_cover_ability
+$5 "new" replace-if-null =: file-base
 
 
 // Controller
@@ -72,12 +73,12 @@ dup hashu wc swap 2constant proxy2_addr
 
 <b b{1000100} s, proxy1_addr addr, b{000010} s, proxy1_state_init <s s, b{0} s, b>
 2 boc+>B
-"new-proxy1.boc" tuck B>file
+file-base +"-proxy1.boc" tuck B>file
 ."(Saved controller creating query to file " type .")" cr
 
 <b b{1000100} s, proxy2_addr addr, b{000010} s, proxy2_state_init <s s, b{0} s, b>
 2 boc+>B
-"new-proxy2.boc" tuck B>file
+file-base +"-proxy2.boc" tuck B>file
 ."(Saved controller creating query to file " type .")" cr
 
 // Controller deploy
@@ -86,6 +87,6 @@ dup hashu wc swap 2constant proxy2_addr
 <b b{100} s, proxy1_addr addr, b{100} s, proxy2_addr addr, b> =: controller_init_message
 <b b{1000100} s, controller_addr addr, b{000010} s, controller_state_init <s s, b{0} s, controller_init_message <s s, b>
 2 boc+>B
-"new-controller.boc" tuck B>file
+file-base +"-controller.boc" tuck B>file
 ."(Saved controller creating query to file " type .")" cr
 
