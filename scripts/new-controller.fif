@@ -13,7 +13,7 @@ begin-options
     "Shows a help message" option-help
 parse-options
 
-$# dup 5 < swap 5 > or ' usage if
+$# dup 4 < swap 5 > or ' usage if
 5 :$1..n
 
 $1 $>smca not abort"Expect validator address" drop 2=: val_addr
@@ -74,12 +74,12 @@ dup hashu wc swap 2constant proxy2_addr
 <b b{1000100} s, proxy1_addr addr, b{000010} s, proxy1_state_init <s s, b{0} s, b>
 2 boc+>B
 file-base +"-proxy1.boc" tuck B>file
-."(Saved controller creating query to file " type .")" cr
+."(Saved proxy 1 creating query to file " type .")" cr
 
 <b b{1000100} s, proxy2_addr addr, b{000010} s, proxy2_state_init <s s, b{0} s, b>
 2 boc+>B
 file-base +"-proxy2.boc" tuck B>file
-."(Saved controller creating query to file " type .")" cr
+."(Saved proxy 2 creating query to file " type .")" cr
 
 // Controller deploy
 
